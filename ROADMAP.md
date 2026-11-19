@@ -27,6 +27,7 @@ Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s
 - ⬜ Lista de bloqueio de tags que não são gênero
 - ⬜ Normalização (minúsculas, hífens, sinônimos: "hip hop" = "hip-hop" = "hiphop")
 - ⬜ Filtrar contra a lista de gêneros do MusicBrainz (só fica o que é gênero reconhecido)
+- ⬜ Sem corte mínimo de faixas por gênero (decidido); o filtro por peso fica na interface
 - ⬜ Peso: combinar a contagem da tag no Last.fm com o nível de origem (faixa > álbum > artista)
 - ⬜ Validação manual com casos conhecidos (ex.: faixas de *Cowboy Carter* → country)
 
