@@ -59,6 +59,7 @@ PORTUGUES = re.compile(
 COLUNAS = [  # (campo, título, largura)
     ("artista", "Artista", 32),
     ("brasileiro", "Brasileiro? (pode corrigir)", 24),
+    ("auto", "Decisão do script", 16),
     ("revisar", "Revisar", 34),
     ("faixas", "Nº de faixas", 12),
     ("pais_mb", "País no MusicBrainz", 22),
@@ -110,6 +111,7 @@ def decidir(art: pd.DataFrame) -> pd.DataFrame:
     outro_mb = art.pais_mb.ne("") & ~br_mb
     br_outros = art.tag_lastfm.ne("") | art.manual.ne("")
     art["brasileiro"] = (br_mb | (br_outros & ~outro_mb)).map({True: "sim", False: "não"})
+    art["auto"] = art.brasileiro
 
     rev = pd.Series("", index=art.index)
     rev[br_outros & outro_mb] = "conflito: Last.fm/planilha dizem Brasil, MusicBrainz diz " + art.pais_mb
@@ -122,7 +124,13 @@ def decidir(art: pd.DataFrame) -> pd.DataFrame:
 
 
 def mesclar_correcoes(art: pd.DataFrame) -> pd.DataFrame:
-    """Mantém o que o usuário corrigiu à mão na planilha de revisão."""
+    """Mantém o que o usuário corrigiu à mão na planilha de revisão.
+
+    Correção = valor de "Brasileiro?" diferente da "Decisão do script" gravada na
+    mesma planilha (o que o script tinha decidido quando a gerou), ou linha já marcada
+    como "Corrigido à mão". Não compara com a decisão de agora: senão uma decisão
+    antiga do próprio script (ex.: com o MusicBrainz fora do ar) viraria "correção".
+    """
     art["corrigido"] = ""
     if not REVISAO.exists():
         return art
@@ -135,9 +143,11 @@ def mesclar_correcoes(art: pd.DataFrame) -> pd.DataFrame:
         antes = ant.loc[row.artista]
         valor = str(antes["brasileiro"]).strip().lower()
         valor = {"s": "sim", "n": "não", "nao": "não", "yes": "sim", "no": "não"}.get(valor, valor)
-        # correção = já marcada antes, ou valor diferente do que o script decidiria agora
-        if valor in ("sim", "não") and (antes.get("corrigido") == "sim" or valor != row.brasileiro):
+        auto_antes = str(antes.get("auto", "")).strip().lower()
+        mudou_a_mao = auto_antes in ("sim", "não") and valor != auto_antes
+        if valor in ("sim", "não") and (antes.get("corrigido") == "sim" or mudou_a_mao):
             art.at[i, "brasileiro"], art.at[i, "corrigido"] = valor, "sim"
+            art.at[i, "revisar"] = ""  # já resolvido pelo usuário
     return art
 
 

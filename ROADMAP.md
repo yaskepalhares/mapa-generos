@@ -33,13 +33,13 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ 72.975 linhas de tag, 3.598 tags distintas (antes da limpeza da Fase 3)
 - 🔄 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) em `data/manual/classificacao_manual.xlsx` — **classificação manual pelo usuário**
 
-## Fase 2b — Tag de país (brazilian) 🔄
+## Fase 2b — Tag de país (brazilian) ✅
 - ✅ `marcar_brasileiros.py`: artista principal brasileiro → tag `brazilian` em todas as faixas dele (`data/processed/tags_pais.parquet`)
 - ✅ Sinais: país no MusicBrainz (homônimos desempatados pelo link do Spotify), tag de país no Last.fm, gêneros BR na planilha manual. Gênero sozinho (bossa nova) não conta: pegaria Laufey e Stan Getz
-- ✅ Resultado parcial (19/11/2026): 222 de 1.030 artistas (21,6%), 778 de 4.018 faixas (19,4%), incluindo 7 marcados à mão (Linguini, DJ Wallace, MC Vitin LC, Prod.Nifour, Gustavo Vaz, Artwo, ogoin)
-- ⚠️ MusicBrainz começou a recusar conexões após ~490 artistas (503 e depois erro de SSL); 539 artistas decididos só por Last.fm/planilha. Entre os que responderam, só 8 de 491 eram BR apenas pelo MusicBrainz → estimativa de ~9 brasileiros faltando
-- ⬜ Rodar de novo sem `--so-cache` quando o MusicBrainz voltar
-- ⬜ Revisão do usuário em `data/manual/artistas_brasileiros.xlsx` (feita para os 11 casos com títulos em português; BIA e Alissic ficaram como "não")
+- ✅ MusicBrainz completo para os 1.030 artistas (19/11/2026; ~1h25 por causa de respostas 503)
+- ✅ Resultado: **224 de 1.030 artistas (21,7%), 780 de 4.018 faixas (19,4%)**, incluindo 7 marcados à mão (Linguini, DJ Wallace, MC Vitin LC, Prod.Nifour, Gustavo Vaz, Artwo, ogoin)
+- ✅ Correções manuais: só contam quando diferem da coluna "Decisão do script" gravada na planilha (antes, decisões antigas do próprio script viravam "correção")
+- ⬜ Revisão do usuário: 3 conflitos (Supercombo: MusicBrainz diz EE, provável homônimo; Alissic: GB; BIA: US)
 
 ## Fase 3 — De tags para gêneros ⬜
 Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").
