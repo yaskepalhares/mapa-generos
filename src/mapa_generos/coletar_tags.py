@@ -1,7 +1,10 @@
 """Fase 2: coleta as tags do Last.fm para cada faixa de faixas.parquet.
 
-Para cada faixa tenta track.getTopTags → album.getTopTags → artist.getTopTags e
-registra de qual nível vieram as tags.
+Para cada faixa coleta os TRÊS níveis (track.getTopTags, album.getTopTags,
+artist.getTopTags), sem parar no primeiro com tags: alguns álbuns só têm tags que
+não são gênero ("2020", "14 tracks") e a escolha do nível fica para a Fase 3,
+depois da limpeza. O "melhor nível" (primeiro com alguma tag) é guardado só para
+medir cobertura.
 
 - Cache: toda resposta fica em data/cache/lastfm/ (ver lastfm.py); álbuns e
   artistas repetidos também ficam em memória durante a execução.
@@ -10,9 +13,14 @@ registra de qual nível vieram as tags.
   Faixas que deram erro não são anotadas e serão tentadas na próxima execução.
 
 Saídas:
-- data/processed/tags_faixas.parquet   uma linha por (track_id, tag, contagem, nivel)
-- data/processed/nivel_faixas.parquet  uma linha por faixa (track_id, nivel), inclui "sem tag"
+- data/processed/tags_faixas.parquet   uma linha por (track_id, tag, contagem, nivel), dos 3 níveis
+- data/processed/nivel_faixas.parquet  uma linha por faixa: track_id, nivel (melhor nível ou
+  None = sem tag), n_faixa, n_album, n_artista (nº de tags em cada nível)
 Com --amostra, os arquivos ganham o sufixo _amostra.
+
+Faixas sem nenhuma tag nos três níveis vão para data/manual/classificacao_manual.csv
+(versionado) para classificação à mão: preencha a coluna "generos", separando com ";".
+Novas execuções só acrescentam faixas; o que já foi preenchido nunca é apagado.
 
 Uso:
     python -m mapa_generos.coletar_tags --amostra 50   # teste
@@ -36,8 +44,11 @@ ROOT = Path(__file__).resolve().parents[2]
 FAIXAS = ROOT / "data" / "processed" / "faixas.parquet"
 CHECKPOINT = ROOT / "data" / "cache" / "coleta_tags.jsonl"
 SAIDA = ROOT / "data" / "processed"
+MANUAL = ROOT / "data" / "manual" / "classificacao_manual.csv"
+COLUNAS_MANUAL = ["track_id", "artista", "faixa", "album", "motivo", "generos"]
 
-NIVEIS = ["faixa", "album", "artista", "sem tag"]
+NIVEIS_API = ["faixa", "album", "artista"]
+NIVEIS = NIVEIS_API + ["sem tag"]
 # Em coletâneas o "artista do álbum" é genérico; aí a busca do álbum usa o artista da faixa.
 ARTISTAS_GENERICOS = {"various artists", "vários artistas", "varios artistas"}
 
@@ -60,16 +71,39 @@ def ler_checkpoint() -> dict[str, dict]:
                 reg = json.loads(linha)
             except json.JSONDecodeError:  # última linha cortada por interrupção
                 continue
-            feitos[reg["track_id"]] = reg
+            if "niveis" in reg:  # ignora registros do formato antigo (só um nível)
+                feitos[reg["track_id"]] = reg
     return feitos
 
 
 def coletar_uma(row) -> dict:
     if not isinstance(row.artista, str) or not isinstance(row.faixa, str):
-        return {"track_id": row.track_id, "nivel": None, "tags": [], "motivo": "sem artista/título"}
+        niveis = {n: [] for n in NIVEIS_API}
+        return {"track_id": row.track_id, "niveis": niveis, "motivo": "sem artista/título"}
     album = row.album if isinstance(row.album, str) else None
-    r = lastfm.tags_da_faixa(row.artista, row.faixa, album, artista_do_album(row))
-    return {"track_id": row.track_id, "nivel": r["nivel"], "tags": r["tags"]}
+    niveis = lastfm.tags_todos_niveis(row.artista, row.faixa, album, artista_do_album(row))
+    return {"track_id": row.track_id, "niveis": niveis}
+
+
+def melhor_nivel(niveis: dict) -> str | None:
+    return next((n for n in NIVEIS_API if len(niveis[n]) >= lastfm.MIN_TAGS), None)
+
+
+def atualizar_manual(sem_tag: pd.DataFrame) -> tuple[int, int]:
+    """Acrescenta ao CSV manual as faixas sem tag que ainda não estão lá.
+
+    Retorna (novas, pendentes): faixas acrescentadas agora e total ainda sem "generos".
+    """
+    if MANUAL.exists():
+        atual = pd.read_csv(MANUAL, dtype=str, keep_default_na=False)
+    else:
+        atual = pd.DataFrame(columns=COLUNAS_MANUAL)
+    novas = sem_tag[~sem_tag.track_id.isin(atual.track_id)].assign(generos="")[COLUNAS_MANUAL]
+    tudo = pd.concat([atual, novas.fillna("")], ignore_index=True)
+    if len(tudo):
+        MANUAL.parent.mkdir(parents=True, exist_ok=True)
+        tudo.to_csv(MANUAL, index=False)
+    return len(novas), int((tudo.generos.str.strip() == "").sum())
 
 
 def relatorio(niveis: pd.Series) -> pd.DataFrame:
@@ -114,9 +148,12 @@ def main(argv: list[str] | None = None) -> None:
         print("\nInterrompido. O progresso foi salvo; rode de novo para continuar.")
 
     regs = [feitos[t] for t in faixas.track_id if t in feitos]
-    nivel = pd.DataFrame({"track_id": [r["track_id"] for r in regs], "nivel": [r["nivel"] for r in regs]})
+    nivel = pd.DataFrame(
+        [{"track_id": r["track_id"], "nivel": melhor_nivel(r["niveis"]),
+          **{f"n_{n}": len(r["niveis"][n]) for n in NIVEIS_API}} for r in regs]
+    )
     tags = pd.DataFrame(
-        [(r["track_id"], nome, cont, r["nivel"]) for r in regs for nome, cont in r["tags"]],
+        [(r["track_id"], nome, cont, n) for r in regs for n in NIVEIS_API for nome, cont in r["niveis"][n]],
         columns=["track_id", "tag", "contagem", "nivel"],
     )
     SAIDA.mkdir(parents=True, exist_ok=True)
@@ -125,7 +162,20 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"\nCobertura ({len(regs)} de {len(faixas)} faixas coletadas):")
     print(relatorio(nivel.nivel).to_string())
+    print("\nFaixas com tags em cada nível (não exclusivo):")
+    for n in NIVEIS_API:
+        k = int((nivel[f"n_{n}"] > 0).sum())
+        print(f"  {n:<8} {k:>5}  ({100 * k / max(len(nivel), 1):.1f}%)")
     print(f"\nLinhas de tag: {len(tags)} · tags distintas: {tags.tag.str.lower().nunique()}")
+    motivos = {r["track_id"]: r.get("motivo", "nenhuma tag nos 3 níveis") for r in regs}
+    sem_tag = (faixas[faixas.track_id.isin(nivel.track_id[nivel.nivel.isna()])]
+               [["track_id", "artista", "faixa", "album"]]
+               .assign(motivo=lambda d: d.track_id.map(motivos)))
+    novas, pendentes = atualizar_manual(sem_tag)
+    if len(sem_tag):
+        print(f"\nSem tag em nenhum nível ({len(sem_tag)}), para classificação manual:")
+        print(sem_tag[["artista", "faixa", "album", "motivo"]].fillna("—").to_string(index=False))
+        print(f"→ {MANUAL.relative_to(ROOT)}: {novas} novas, {pendentes} ainda sem \"generos\" preenchido")
     if erros:
         print(f"\n{len(erros)} faixas com erro (serão tentadas de novo na próxima execução). Ex.: {erros[0][1]}")
     print(f"Salvo em data/processed/tags_faixas{sufixo}.parquet e nivel_faixas{sufixo}.parquet")

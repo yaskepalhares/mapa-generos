@@ -121,6 +121,21 @@ def tags_artista(artista: str) -> tuple[tuple[str, int], ...]:
     return tuple(_parse_tags(_call("artist.getTopTags", artist=artista)))
 
 
+def tags_todos_niveis(
+    artista: str, faixa: str, album: str | None = None, artista_album: str | None = None
+) -> dict[str, list[tuple[str, int]]]:
+    """Tags dos três níveis, sem parar no primeiro que tiver tags.
+
+    Serve para a Fase 3 escolher o nível depois de limpar as tags: um álbum pode ter
+    só tags que não são gênero ("2020", nome do artista) e aí vale usar o artista.
+    """
+    return {
+        "faixa": list(tags_faixa(artista, faixa)),
+        "album": list(tags_album(artista_album or artista, album)) if album else [],
+        "artista": list(tags_artista(artista)),
+    }
+
+
 def tags_da_faixa(
     artista: str, faixa: str, album: str | None = None, artista_album: str | None = None
 ) -> dict:
