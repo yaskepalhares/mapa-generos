@@ -14,7 +14,7 @@ Projeto pessoal do Yaske: mapa interativo, estilo rede neural, dos gêneros e su
 ## Estado atual
 - Fase 0 e Fase 1 concluídas. Próxima: **Fase 2 (tags do Last.fm)**. Ver ROADMAP.md.
 - `data/raw/liked.csv`: export do Exportify (exportify.app, playlist "Liked"). **Não versionado.** O usuário tem uma cópia em `~/Downloads/liked.csv`.
-- `python -m mapa_generos.ingest_exportify` → `data/processed/faixas.parquet` (4.018 faixas, 1.034 artistas principais, 2.218 álbuns). Já testado.
+- `python -m mapa_generos.ingest_exportify` → `data/processed/faixas.parquet` (4.018 faixas, 1.030 artistas principais por nome, 2.218 álbuns). Já testado.
 - `src/mapa_generos/lastfm.py`: cliente com cache em disco (`data/cache/lastfm/`), ~4 req/s, fallback faixa → álbum → artista, registra o nível de origem. Ainda não rodou em lote.
 - `ingest_spotifast.py`: lê o cache do app Spotifast, mas ele só guarda as 50 curtidas mais recentes; serve só para atualizações incrementais.
 
@@ -26,7 +26,7 @@ Projeto pessoal do Yaske: mapa interativo, estilo rede neural, dos gêneros e su
 "TEXAS HOLD 'EM" (Beyoncé): faixa sem tags; álbum COWBOY CARTER → 2024, country, americana, AOTY, folk, country pop…; artista → rnb, pop, female vocalists, soul. Confirma o fallback e a necessidade de limpar tags que não são gênero (anos, "AOTY", "female vocalists", nome do artista, sinônimos como rnb/r&b).
 
 ## Próximos passos sugeridos (Fase 2)
-1. Script `coletar_tags.py`: para cada faixa de `faixas.parquet`, chamar `tags_da_faixa(artista, faixa, album)`. Cache por álbum e por artista para não repetir chamadas (são 2.218 álbuns e 1.034 artistas). Retomável se interrompido. Barra de progresso.
+1. Script `coletar_tags.py`: para cada faixa de `faixas.parquet`, chamar `tags_da_faixa(artista, faixa, album)`. Cache por álbum e por artista para não repetir chamadas (são 2.218 álbuns e 1.030 artistas). Retomável se interrompido. Barra de progresso.
 2. Saída `data/processed/tags_faixas.parquet`: uma linha por (track_id, tag, contagem, nivel).
 3. Relatório de cobertura: % de faixas com tag própria, herdada do álbum, herdada do artista e sem tag.
 4. Rodar primeiro em ~50 faixas para validar, depois em tudo (~30 min no total).
