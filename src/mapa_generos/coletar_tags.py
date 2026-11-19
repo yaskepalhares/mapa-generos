@@ -18,9 +18,10 @@ Saídas:
   None = sem tag), n_faixa, n_album, n_artista (nº de tags em cada nível)
 Com --amostra, os arquivos ganham o sufixo _amostra.
 
-Faixas sem nenhuma tag nos três níveis vão para data/manual/classificacao_manual.csv
-(versionado) para classificação à mão: preencha a coluna "generos", separando com ";".
-Novas execuções só acrescentam faixas; o que já foi preenchido nunca é apagado.
+Faixas sem nenhuma tag nos três níveis vão para data/manual/classificacao_manual.xlsx
+(versionado, ver manual.py) para classificação à mão no Excel: preencha a coluna
+"Gêneros (preencher)", separando com ";". Novas execuções só acrescentam faixas; o
+que já foi preenchido nunca é apagado.
 
 Uso:
     python -m mapa_generos.coletar_tags --amostra 50   # teste
@@ -39,13 +40,12 @@ from tqdm import tqdm
 
 from . import lastfm
 from .ingest_exportify import separar_artistas
+from .manual import MANUAL, atualizar_manual
 
 ROOT = Path(__file__).resolve().parents[2]
 FAIXAS = ROOT / "data" / "processed" / "faixas.parquet"
 CHECKPOINT = ROOT / "data" / "cache" / "coleta_tags.jsonl"
 SAIDA = ROOT / "data" / "processed"
-MANUAL = ROOT / "data" / "manual" / "classificacao_manual.csv"
-COLUNAS_MANUAL = ["track_id", "artista", "faixa", "album", "motivo", "generos"]
 
 NIVEIS_API = ["faixa", "album", "artista"]
 NIVEIS = NIVEIS_API + ["sem tag"]
@@ -87,23 +87,6 @@ def coletar_uma(row) -> dict:
 
 def melhor_nivel(niveis: dict) -> str | None:
     return next((n for n in NIVEIS_API if len(niveis[n]) >= lastfm.MIN_TAGS), None)
-
-
-def atualizar_manual(sem_tag: pd.DataFrame) -> tuple[int, int]:
-    """Acrescenta ao CSV manual as faixas sem tag que ainda não estão lá.
-
-    Retorna (novas, pendentes): faixas acrescentadas agora e total ainda sem "generos".
-    """
-    if MANUAL.exists():
-        atual = pd.read_csv(MANUAL, dtype=str, keep_default_na=False)
-    else:
-        atual = pd.DataFrame(columns=COLUNAS_MANUAL)
-    novas = sem_tag[~sem_tag.track_id.isin(atual.track_id)].assign(generos="")[COLUNAS_MANUAL]
-    tudo = pd.concat([atual, novas.fillna("")], ignore_index=True)
-    if len(tudo):
-        MANUAL.parent.mkdir(parents=True, exist_ok=True)
-        tudo.to_csv(MANUAL, index=False)
-    return len(novas), int((tudo.generos.str.strip() == "").sum())
 
 
 def relatorio(niveis: pd.Series) -> pd.DataFrame:
