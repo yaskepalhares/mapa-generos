@@ -7,10 +7,11 @@ Legenda: ✅ feito · 🔄 em andamento · ⬜ a fazer · ❓ decisão em aberto
 - ✅ Levantamento de projetos parecidos e das fontes de dados ([`docs/fontes-de-dados.md`](docs/fontes-de-dados.md))
 - ✅ Esqueleto do cliente Last.fm com cache em disco
 
-## Fase 1 — Coletar as curtidas ⬜
+## Fase 1 — Coletar as curtidas 🔄
 Meta: tabela `faixas` com as ~4.019 curtidas (título, artista(s), álbum, data em que curtiu, ID do Spotify).
-- ⬜ Inspecionar o JSON do Spotifast (`~/Library/Caches/me.paolino.spotifast/liked-songs/`) e documentar o formato
-- ⬜ `ingest_spotifast.py`: JSON → `data/processed/faixas.parquet`
+- ✅ Inspecionar o JSON do Spotifast e documentar o formato (ver docstring de `ingest_spotifast.py`)
+- ✅ `ingest_spotifast.py`: JSON → `data/processed/faixas.parquet`
+- 🔄 **Bloqueio:** o cache só tinha 50 de 4.018 faixas (`next_offset: 50`). O Spotifast grava só as páginas já carregadas. Testar: rolar as Curtidas até o fim no app e reler o arquivo.
 - ⬜ Reserva: `ingest_spotify_export.py` para a exportação de dados da conta (`YourLibrary.json`)
 - ⬜ Checagem: total bate com o número de curtidas no app? Duplicatas?
 
