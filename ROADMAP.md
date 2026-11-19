@@ -22,7 +22,9 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Retomável (`data/cache/coleta_tags.jsonl`) e com barra de progresso; testado offline com API simulada
 - ✅ Registra de qual nível veio cada tag → `tags_faixas.parquet` e `nivel_faixas.parquet`
 - ✅ Busca do álbum usa o artista do álbum (exceto "Various Artists"); 87 faixas têm artista do álbum diferente do da faixa
-- ⬜ Teste real em 50 faixas (`--amostra 50`) — aguardando `LASTFM_API_KEY` no `.env`
+- ✅ Teste real em 50 faixas (`--amostra 50`, semente 42), 19/11/2026: faixa 19 (38%) · álbum 21 (42%) · artista 9 (18%) · sem tag 1 (2%); 0 erros; 93 chamadas em 63 s (~0,7 s/chamada, a latência domina)
+- ❓ Problema achado no teste: alguns álbuns só têm tags que não são gênero (ITZY → "2020, itzy"; Emicida → "2010s, 14 tracks, 2015, Tags Ok") e bloqueiam a queda para o artista. Decidir antes de rodar tudo
+- ⬜ Possível melhoria: títulos com " - Remastered 2009" ou "(feat. …)" caem para o álbum; limpar o título pode aumentar a cobertura no nível da faixa
 - ⬜ Relatório de cobertura: % de faixas com tag própria vs. herdada do álbum/artista
 - ⬜ Rodar em todas as 4.018 faixas
 
