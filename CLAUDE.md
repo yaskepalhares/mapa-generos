@@ -12,10 +12,10 @@ Projeto pessoal do Yaske: mapa interativo, estilo rede neural, dos gêneros e su
 - O usuário quer números reais e verificados; não inventar métricas.
 
 ## Estado atual
-- Fase 0 e Fase 1 concluídas. **Fase 2 em andamento**: `coletar_tags.py` coleta os 3 níveis para toda faixa (decidido após o teste em 50 faixas: tags de faixa 38%, álbum 78%, artista 98%, sem nada 2%). Faixas sem tag nenhuma vão para `data/manual/classificacao_manual.csv`, preenchido à mão. Falta rodar nas 4.018. Ver ROADMAP.md.
+- Fases 0, 1 e 2 concluídas. Fase 2: `coletar_tags.py` coletou os 3 níveis das 4.018 faixas (tags de faixa 25,5%, álbum 75,8%, artista 98,4%; 63 sem nada) → `data/processed/tags_faixas.parquet` e `nivel_faixas.parquet` (não versionados; o cache em `data/cache/lastfm/` permite regerar sem novas chamadas). As 63 faixas sem tag estão em `data/manual/classificacao_manual.csv` (versionado), para o usuário preencher a coluna `generos`. Próxima: **Fase 3 (de tags para gêneros)**. Ver ROADMAP.md.
 - `data/raw/liked.csv`: export do Exportify (exportify.app, playlist "Liked"). **Não versionado.** O usuário tem uma cópia em `~/Downloads/liked.csv`.
 - `python -m mapa_generos.ingest_exportify` → `data/processed/faixas.parquet` (4.018 faixas, 1.030 artistas principais por nome, 2.218 álbuns). Já testado.
-- `src/mapa_generos/lastfm.py`: cliente com cache em disco (`data/cache/lastfm/`), ~4 req/s, fallback faixa → álbum → artista, registra o nível de origem. Ainda não rodou em lote.
+- `src/mapa_generos/lastfm.py`: cliente com cache em disco (`data/cache/lastfm/`), ~4 req/s, fallback faixa → álbum → artista, registra o nível de origem. Já rodou em lote (19/11/2026).
 - `ingest_spotifast.py`: lê o cache do app Spotifast, mas ele só guarda as 50 curtidas mais recentes; serve só para atualizações incrementais.
 
 ## Credenciais

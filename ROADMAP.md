@@ -15,7 +15,7 @@ Meta: tabela `faixas` com as curtidas (título, artista(s), álbum, data em que 
 - ✅ `ingest_spotifast.py` mantido para atualizações rápidas (o cache do Spotifast só guarda as 50 curtidas mais recentes)
 - ⬜ Mesclar curtidas novas do Spotifast com o CSV sem precisar reexportar
 
-## Fase 2 — Tags por faixa (Last.fm) 🔄
+## Fase 2 — Tags por faixa (Last.fm) ✅
 Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ `coletar_tags.py`: `track.getTopTags` → `album.getTopTags` → `artist.getTopTags`, nessa ordem de preferência
 - ✅ Cache em disco por chamada + cache em memória de álbum e artista; ~4 req/s, com retentativas em erros temporários
@@ -27,8 +27,11 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Mesma amostra com os 3 níveis: tags de faixa em 19 (38%), de álbum em 39 (78%), de artista em 49 (98%); só 1 sem nada (Enversos, "Baile Black")
 - ✅ Faixas sem tag nos 3 níveis vão para `data/manual/classificacao_manual.csv` (versionado) para classificação à mão; novas execuções só acrescentam e não apagam o que foi preenchido
 - ⬜ Possível melhoria: títulos com " - Remastered 2009" ou "(feat. …)" caem para o álbum; limpar o título pode aumentar a cobertura no nível da faixa
-- ⬜ Relatório de cobertura: % de faixas com tag própria vs. herdada do álbum/artista
-- ⬜ Rodar em todas as 4.018 faixas (estimativa: até ~7.300 chamadas, ~80 min em série)
+- ✅ Coleta completa, 19/11/2026: 4.018 faixas, 0 erros, ~65 min (3.824 chamadas de faixa, 2.111 de álbum, 1.030 de artista)
+- ✅ Cobertura (tem tag no nível, não exclusivo): faixa 1.026 (25,5%) · álbum 3.044 (75,8%) · artista 3.953 (98,4%)
+- ✅ Melhor nível (primeiro com tag): faixa 25,5% · álbum 51,9% · artista 21,0% · sem tag 63 (1,6%)
+- ✅ 72.975 linhas de tag, 3.598 tags distintas (antes da limpeza da Fase 3)
+- 🔄 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) em `data/manual/classificacao_manual.csv` — **classificação manual pelo usuário**
 
 ## Fase 3 — De tags para gêneros ⬜
 Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").
