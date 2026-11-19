@@ -13,3 +13,4 @@
 | 2026-11-19 | Coletar tags dos **3 níveis** (faixa, álbum e artista) para toda faixa | No teste de 50 faixas, álbuns com só tags que não são gênero ("2020", "14 tracks") impediam a queda para o artista; o nível é escolhido na Fase 3, depois da limpeza |
 | 2026-11-19 | Faixas sem tag nos 3 níveis vão para classificação manual (`data/manual/classificacao_manual.xlsx`) | Pedido do usuário |
 | 2026-11-19 | Classificação manual em planilha Excel (`.xlsx`), fonte única; o CSV foi removido | Pedido do usuário: preencher no Excel, com uma só coluna a preencher |
+| 2026-11-19 | Dropdown da planilha manual = tags existentes ∩ gêneros do MusicBrainz (+ indie, alternative, rap, r&b, hardcore) | Opções limpas a partir do que já existe; a mesma lista servirá de base para a Fase 3 |
