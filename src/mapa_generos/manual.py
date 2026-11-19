@@ -19,10 +19,19 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
+
+from .musicbrainz import chave, mapa_canonico
 
 ROOT = Path(__file__).resolve().parents[2]
 MANUAL = ROOT / "data" / "manual" / "classificacao_manual.xlsx"
 ABA = "Classificação"
+ABA_LISTA = "Lista de gêneros"
+TAGS = ROOT / "data" / "processed" / "tags_faixas.parquet"
+# Termos muito usados nas suas tags que não estão na lista do MusicBrainz, mas são
+# quase gênero. Entram no dropdown (rnb aparece como "r&b").
+EXTRAS = {"indie": "indie", "alternative": "alternative", "rap": "rap", "rnb": "r&b",
+          "r&b": "r&b", "hardcore": "hardcore"}
 
 # (coluna, título no Excel, largura)
 # Só "generos" é para preencher; fica por último. track_id fica oculta (é a chave).
@@ -49,6 +58,23 @@ FUNDO_FAIXA_ALTERNADA = PatternFill("solid", fgColor="F2F2F2")
 
 def link_spotify(track_id: str) -> str:
     return f"https://open.spotify.com/track/{track_id}"
+
+
+def opcoes_generos(tags_path: Path = TAGS) -> pd.DataFrame:
+    """Gêneros já presentes nas tags das suas faixas, com o nº de faixas de cada um.
+
+    Só entram tags reconhecidas como gênero pelo MusicBrainz (mais os EXTRAS),
+    comparadas sem diferenciar maiúsculas, hífens e espaços. Ordem alfabética.
+    """
+    if not tags_path.exists():
+        return pd.DataFrame(columns=["genero", "faixas"])
+    t = pd.read_parquet(tags_path, columns=["track_id", "tag"])
+    canon = mapa_canonico()
+    canon.update({chave(k): v for k, v in EXTRAS.items()})
+    t["genero"] = t.tag.map(lambda x: canon.get(chave(x)))
+    por = t.dropna(subset=["genero"]).groupby("genero").track_id.nunique()
+    return (por.rename("faixas").reset_index()
+            .sort_values("genero", key=lambda s: s.str.lower()).reset_index(drop=True))
 
 
 def ler_manual(path: Path = MANUAL) -> pd.DataFrame:
@@ -98,11 +124,37 @@ def escrever_manual(df: pd.DataFrame, path: Path = MANUAL) -> None:
     ws.freeze_panes = "B2"
     ws.auto_filter.ref = ws.dimensions
 
+    # Dropdown na coluna de gêneros, com a lista da aba "Lista de gêneros".
+    opcoes = opcoes_generos()
+    if len(opcoes):
+        lista = wb.create_sheet(ABA_LISTA)
+        lista.append(["Gênero", "Nº de faixas suas com essa tag"])
+        for cel in lista[1]:
+            cel.font, cel.fill = FONTE_TITULO, FUNDO_TITULO
+        for g, n in opcoes.itertuples(index=False):
+            lista.append([g, int(n)])
+            for cel in lista[lista.max_row]:
+                cel.font = FONTE
+        lista.column_dimensions["A"].width = 32
+        lista.column_dimensions["B"].width = 30
+        lista.freeze_panes = "A2"
+        lista.auto_filter.ref = lista.dimensions
+        # Sem mensagem de erro: o dropdown sugere, mas aceita texto livre
+        # (vários gêneros com ";" ou um gênero que não esteja na lista).
+        dv = DataValidation(type="list", formula1=f"'{ABA_LISTA}'!$A$2:$A${len(opcoes) + 1}",
+                            allow_blank=True, showErrorMessage=False, showInputMessage=True,
+                            promptTitle="Gêneros", prompt="Escolha da lista ou digite; vários: separe com ;")
+        letra = get_column_letter(col_gen)
+        dv.add(f"{letra}2:{letra}{max(ws.max_row, 2)}")
+        ws.add_data_validation(dv)
+
     leg = wb.create_sheet("Como preencher")
     texto = [
         ("Como preencher", True),
         ("Edite só a coluna amarela \"Gêneros (preencher)\" da aba Classificação. As outras são geradas pelo script.", False),
-        ("Vários gêneros na mesma célula: separe com ponto e vírgula (;). Use minúsculas, como no Last.fm.", False),
+        ("Clique na célula e use a setinha do dropdown: as opções são os gêneros que já aparecem nas suas outras faixas.", False),
+        ("A aba \"Lista de gêneros\" mostra as mesmas opções com o nº de faixas de cada uma (use Ctrl+F para procurar).", False),
+        ("Vários gêneros na mesma célula: escolha um e complete digitando \"; outro\". Texto livre também é aceito.", False),
         ("Deixe em branco se não souber: a faixa continua na lista de pendentes.", False),
         ("Dica: preencha a primeira faixa do artista e arraste/copie para as outras.", False),
         ("Faixas de um mesmo artista ficam juntas, com fundo alternado entre artistas.", False),
@@ -110,7 +162,7 @@ def escrever_manual(df: pd.DataFrame, path: Path = MANUAL) -> None:
         ("Rodar a coleta de novo só acrescenta faixas novas; o que você preencheu é mantido.", False),
         ("", False),
         ("Exemplo (formato esperado):", True),
-        ("Artista: Enversos  ·  Faixa: Baile Black  ·  Gêneros: funk carioca; baile funk", False),
+        ("Artista: Enversos  ·  Faixa: Baile Black  ·  Gêneros: funk carioca; trap", False),
     ]
     for t, negrito in texto:
         leg.append([t])
