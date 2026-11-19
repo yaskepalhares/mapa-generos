@@ -33,6 +33,14 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ 72.975 linhas de tag, 3.598 tags distintas (antes da limpeza da Fase 3)
 - 🔄 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) em `data/manual/classificacao_manual.xlsx` — **classificação manual pelo usuário**
 
+## Fase 2b — Tag de país (brazilian) 🔄
+- ✅ `marcar_brasileiros.py`: artista principal brasileiro → tag `brazilian` em todas as faixas dele (`data/processed/tags_pais.parquet`)
+- ✅ Sinais: país no MusicBrainz (homônimos desempatados pelo link do Spotify), tag de país no Last.fm, gêneros BR na planilha manual. Gênero sozinho (bossa nova) não conta: pegaria Laufey e Stan Getz
+- ✅ Resultado parcial (19/11/2026): 215 de 1.030 artistas (20,9%), 742 de 4.018 faixas (18,5%)
+- ⚠️ MusicBrainz começou a recusar conexões após ~490 artistas (503 e depois erro de SSL); 539 artistas decididos só por Last.fm/planilha. Entre os que responderam, só 8 de 491 eram BR apenas pelo MusicBrainz → estimativa de ~9 brasileiros faltando
+- ⬜ Rodar de novo sem `--so-cache` quando o MusicBrainz voltar
+- ⬜ Revisão do usuário em `data/manual/artistas_brasileiros.xlsx` (2 conflitos, 11 casos sem país com títulos em português)
+
 ## Fase 3 — De tags para gêneros ⬜
 Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").
 - ⬜ Lista de bloqueio de tags que não são gênero

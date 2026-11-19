@@ -14,3 +14,4 @@
 | 2026-11-19 | Faixas sem tag nos 3 níveis vão para classificação manual (`data/manual/classificacao_manual.xlsx`) | Pedido do usuário |
 | 2026-11-19 | Classificação manual em planilha Excel (`.xlsx`), fonte única; o CSV foi removido | Pedido do usuário: preencher no Excel, com uma só coluna a preencher |
 | 2026-11-19 | Dropdown da planilha manual = tags existentes ∩ gêneros do MusicBrainz (+ indie, alternative, rap, r&b, hardcore) | Opções limpas a partir do que já existe; a mesma lista servirá de base para a Fase 3 |
+| 2026-11-19 | Tag `brazilian` em todas as faixas de artista principal brasileiro | Pedido do usuário. País pelo MusicBrainz + tag de país do Last.fm + planilha manual; participações (feat.) não contam |
