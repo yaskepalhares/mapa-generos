@@ -9,3 +9,4 @@
 | 2026-11-19 | Hierarquia em aberto (ver Fase 4 do roadmap) | Depende da cobertura do MusicBrainz para os seus gêneros |
 | 2026-11-19 | Uso pessoal, rodado localmente e versionado no GitHub | — |
 | 2026-11-19 | Manter **todos** os subgêneros, sem corte mínimo de faixas | Preferência do usuário; filtro de peso fica só na visualização |
+| 2026-11-19 | Exportify como fonte principal das curtidas | O cache do Spotifast só guarda a primeira página (50 faixas) |

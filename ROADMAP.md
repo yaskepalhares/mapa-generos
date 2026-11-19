@@ -7,13 +7,13 @@ Legenda: ✅ feito · 🔄 em andamento · ⬜ a fazer · ❓ decisão em aberto
 - ✅ Levantamento de projetos parecidos e das fontes de dados ([`docs/fontes-de-dados.md`](docs/fontes-de-dados.md))
 - ✅ Esqueleto do cliente Last.fm com cache em disco
 
-## Fase 1 — Coletar as curtidas 🔄
-Meta: tabela `faixas` com as ~4.019 curtidas (título, artista(s), álbum, data em que curtiu, ID do Spotify).
-- ✅ Inspecionar o JSON do Spotifast e documentar o formato (ver docstring de `ingest_spotifast.py`)
-- ✅ `ingest_spotifast.py`: JSON → `data/processed/faixas.parquet`
-- 🔄 **Bloqueio:** o cache só tinha 50 de 4.018 faixas (`next_offset: 50`). O Spotifast grava só as páginas já carregadas. Testar: rolar as Curtidas até o fim no app e reler o arquivo.
-- ⬜ Reserva: `ingest_spotify_export.py` para a exportação de dados da conta (`YourLibrary.json`)
-- ⬜ Checagem: total bate com o número de curtidas no app? Duplicatas?
+## Fase 1 — Coletar as curtidas ✅
+Meta: tabela `faixas` com as curtidas (título, artista(s), álbum, data em que curtiu, ID do Spotify).
+- ✅ Fonte principal: CSV do [Exportify](https://exportify.app) → `ingest_exportify.py` → `data/processed/faixas.parquet`
+- ✅ Checagem: 4.018 faixas, 0 duplicatas, 100% das IDs batem com a lista copiada do Spotifast
+- ✅ Resultado: 1.034 artistas principais, 2.218 álbuns, curtidas de fev/2016 a nov/2026; 3 faixas sem nome de artista no Spotify
+- ✅ `ingest_spotifast.py` mantido para atualizações rápidas (o cache do Spotifast só guarda as 50 curtidas mais recentes)
+- ⬜ Mesclar curtidas novas do Spotifast com o CSV sem precisar reexportar
 
 ## Fase 2 — Tags por faixa (Last.fm) ⬜
 Meta: cada faixa com uma lista de tags ponderadas.

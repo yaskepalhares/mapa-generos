@@ -36,7 +36,7 @@ web/              visualização HTML (o JSON do grafo é gerado aqui)
 
 ## Status
 
-Fase 1 — coleta das curtidas (leitor do Spotifast pronto; cache ainda incompleto). Ver [`ROADMAP.md`](ROADMAP.md).
+Fase 1 concluída (4.018 curtidas). Próximo: Fase 2, tags do Last.fm. Ver [`ROADMAP.md`](ROADMAP.md).
 
 ## Configuração
 
