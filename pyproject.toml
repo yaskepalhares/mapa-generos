@@ -9,6 +9,7 @@ dependencies = [
   "pandas>=2.2",
   "pyarrow>=15",
   "networkx>=3.2",
+  "tqdm>=4.66",
 ]
 
 [build-system]
