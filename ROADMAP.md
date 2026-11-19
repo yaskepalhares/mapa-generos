@@ -25,13 +25,13 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Teste real em 50 faixas (`--amostra 50`, semente 42), 19/11/2026: faixa 19 (38%) · álbum 21 (42%) · artista 9 (18%) · sem tag 1 (2%); 0 erros; 93 chamadas em 63 s (~0,7 s/chamada, a latência domina)
 - ✅ Problema achado no teste: alguns álbuns só têm tags que não são gênero (ITZY → "2020, itzy"; Emicida → "2010s, 14 tracks, 2015, Tags Ok") e bloqueavam a queda para o artista. **Decidido: coletar os 3 níveis para toda faixa**; a escolha do nível fica para a Fase 3
 - ✅ Mesma amostra com os 3 níveis: tags de faixa em 19 (38%), de álbum em 39 (78%), de artista em 49 (98%); só 1 sem nada (Enversos, "Baile Black")
-- ✅ Faixas sem tag nos 3 níveis vão para `data/manual/classificacao_manual.csv` (versionado) para classificação à mão; novas execuções só acrescentam e não apagam o que foi preenchido
+- ✅ Faixas sem tag nos 3 níveis vão para `data/manual/classificacao_manual.xlsx` (versionado) para classificação à mão; novas execuções só acrescentam e não apagam o que foi preenchido
 - ⬜ Possível melhoria: títulos com " - Remastered 2009" ou "(feat. …)" caem para o álbum; limpar o título pode aumentar a cobertura no nível da faixa
 - ✅ Coleta completa, 19/11/2026: 4.018 faixas, 0 erros, ~65 min (3.824 chamadas de faixa, 2.111 de álbum, 1.030 de artista)
 - ✅ Cobertura (tem tag no nível, não exclusivo): faixa 1.026 (25,5%) · álbum 3.044 (75,8%) · artista 3.953 (98,4%)
 - ✅ Melhor nível (primeiro com tag): faixa 25,5% · álbum 51,9% · artista 21,0% · sem tag 63 (1,6%)
 - ✅ 72.975 linhas de tag, 3.598 tags distintas (antes da limpeza da Fase 3)
-- 🔄 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) em `data/manual/classificacao_manual.csv` — **classificação manual pelo usuário**
+- 🔄 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) em `data/manual/classificacao_manual.xlsx` — **classificação manual pelo usuário**
 
 ## Fase 3 — De tags para gêneros ⬜
 Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").
