@@ -12,7 +12,7 @@ Projeto pessoal do Yaske: mapa interativo, estilo rede neural, dos gêneros e su
 - O usuário quer números reais e verificados; não inventar métricas.
 
 ## Estado atual
-- Fase 0 e Fase 1 concluídas. Próxima: **Fase 2 (tags do Last.fm)**. Ver ROADMAP.md.
+- Fase 0 e Fase 1 concluídas. **Fase 2 em andamento**: `coletar_tags.py` escrito e testado offline; falta o teste real em 50 faixas (precisa da chave no `.env`). Ver ROADMAP.md.
 - `data/raw/liked.csv`: export do Exportify (exportify.app, playlist "Liked"). **Não versionado.** O usuário tem uma cópia em `~/Downloads/liked.csv`.
 - `python -m mapa_generos.ingest_exportify` → `data/processed/faixas.parquet` (4.018 faixas, 1.030 artistas principais por nome, 2.218 álbuns). Já testado.
 - `src/mapa_generos/lastfm.py`: cliente com cache em disco (`data/cache/lastfm/`), ~4 req/s, fallback faixa → álbum → artista, registra o nível de origem. Ainda não rodou em lote.

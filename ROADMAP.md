@@ -15,12 +15,16 @@ Meta: tabela `faixas` com as curtidas (título, artista(s), álbum, data em que 
 - ✅ `ingest_spotifast.py` mantido para atualizações rápidas (o cache do Spotifast só guarda as 50 curtidas mais recentes)
 - ⬜ Mesclar curtidas novas do Spotifast com o CSV sem precisar reexportar
 
-## Fase 2 — Tags por faixa (Last.fm) ⬜
+## Fase 2 — Tags por faixa (Last.fm) 🔄
 Meta: cada faixa com uma lista de tags ponderadas.
-- ⬜ Coletar `track.getTopTags` → `album.getTopTags` → `artist.getTopTags`, nessa ordem de preferência
-- ⬜ Cache por chamada, respeitando o limite de requisições (~5/s)
-- ⬜ Registrar de qual nível veio cada tag (faixa, álbum ou artista), para medir cobertura
+- ✅ `coletar_tags.py`: `track.getTopTags` → `album.getTopTags` → `artist.getTopTags`, nessa ordem de preferência
+- ✅ Cache em disco por chamada + cache em memória de álbum e artista; ~4 req/s, com retentativas em erros temporários
+- ✅ Retomável (`data/cache/coleta_tags.jsonl`) e com barra de progresso; testado offline com API simulada
+- ✅ Registra de qual nível veio cada tag → `tags_faixas.parquet` e `nivel_faixas.parquet`
+- ✅ Busca do álbum usa o artista do álbum (exceto "Various Artists"); 87 faixas têm artista do álbum diferente do da faixa
+- ⬜ Teste real em 50 faixas (`--amostra 50`) — aguardando `LASTFM_API_KEY` no `.env`
 - ⬜ Relatório de cobertura: % de faixas com tag própria vs. herdada do álbum/artista
+- ⬜ Rodar em todas as 4.018 faixas
 
 ## Fase 3 — De tags para gêneros ⬜
 Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").
