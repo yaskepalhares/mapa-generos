@@ -31,3 +31,20 @@ O Spotifast não faz scrobble no Last.fm nem tem comando de exportação (CLI s�
 - [Shiroizu/VocaDB-Tag-Graph](https://github.com/Shiroizu/VocaDB-Tag-Graph) — tags como notas markdown no Graph View do Obsidian
 - [SarcevicAntonio/last.fm-historic-tag-ranking](https://github.com/sarcevicantonio/last.fm-historic-tag-ranking) — tag principal por artista via Last.fm
 - [0xroko/melomap](https://github.com/0xroko/melomap) — grafo de força 3D (react-force-graph)
+
+## Teste do Last.fm (19/11/2026) — Beyoncé, "TEXAS HOLD 'EM" (*COWBOY CARTER*)
+
+| Nível | Tags (contagem relativa) |
+|---|---|
+| Faixa (`track.getTopTags`) | nenhuma |
+| Álbum (`album.getTopTags`) | 2024 (100), **country (85)**, americana (33), AOTY (21), folk (6), country pop (6), rock (4), country soul (1) |
+| Artista (`artist.getTopTags`) | rnb (100), pop (93), female vocalists (45), soul (41), Hip-Hop (14), beyonce (4), r&b (4) |
+
+Conclusões:
+- A ordem faixa → álbum → artista funciona: o disco cai em country, como esperado, e não em R&B/pop.
+- Mesmo uma faixa muito tocada pode não ter tags próprias, então o nível de álbum vai pesar muito.
+- Confirma a necessidade da Fase 3: "2024", "AOTY", "female vocalists" e o nome do artista não são gêneros; "rnb" e "r&b" são sinônimos.
+
+## Rede
+
+O pipeline precisa rodar **no Mac** (terminal comum). O ambiente de nuvem do assistente e a VM do app bloqueiam `ws.audioscrobbler.com`; o navegador do Mac acessa normalmente.
