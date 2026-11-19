@@ -23,10 +23,12 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Registra de qual nível veio cada tag → `tags_faixas.parquet` e `nivel_faixas.parquet`
 - ✅ Busca do álbum usa o artista do álbum (exceto "Various Artists"); 87 faixas têm artista do álbum diferente do da faixa
 - ✅ Teste real em 50 faixas (`--amostra 50`, semente 42), 19/11/2026: faixa 19 (38%) · álbum 21 (42%) · artista 9 (18%) · sem tag 1 (2%); 0 erros; 93 chamadas em 63 s (~0,7 s/chamada, a latência domina)
-- ❓ Problema achado no teste: alguns álbuns só têm tags que não são gênero (ITZY → "2020, itzy"; Emicida → "2010s, 14 tracks, 2015, Tags Ok") e bloqueiam a queda para o artista. Decidir antes de rodar tudo
+- ✅ Problema achado no teste: alguns álbuns só têm tags que não são gênero (ITZY → "2020, itzy"; Emicida → "2010s, 14 tracks, 2015, Tags Ok") e bloqueavam a queda para o artista. **Decidido: coletar os 3 níveis para toda faixa**; a escolha do nível fica para a Fase 3
+- ✅ Mesma amostra com os 3 níveis: tags de faixa em 19 (38%), de álbum em 39 (78%), de artista em 49 (98%); só 1 sem nada (Enversos, "Baile Black")
+- ✅ Faixas sem tag nos 3 níveis vão para `data/manual/classificacao_manual.csv` (versionado) para classificação à mão; novas execuções só acrescentam e não apagam o que foi preenchido
 - ⬜ Possível melhoria: títulos com " - Remastered 2009" ou "(feat. …)" caem para o álbum; limpar o título pode aumentar a cobertura no nível da faixa
 - ⬜ Relatório de cobertura: % de faixas com tag própria vs. herdada do álbum/artista
-- ⬜ Rodar em todas as 4.018 faixas
+- ⬜ Rodar em todas as 4.018 faixas (estimativa: até ~7.300 chamadas, ~80 min em série)
 
 ## Fase 3 — De tags para gêneros ⬜
 Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").

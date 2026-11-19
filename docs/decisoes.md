@@ -10,3 +10,5 @@
 | 2026-11-19 | Uso pessoal, rodado localmente e versionado no GitHub | — |
 | 2026-11-19 | Manter **todos** os subgêneros, sem corte mínimo de faixas | Preferência do usuário; filtro de peso fica só na visualização |
 | 2026-11-19 | Exportify como fonte principal das curtidas | O cache do Spotifast só guarda a primeira página (50 faixas) |
+| 2026-11-19 | Coletar tags dos **3 níveis** (faixa, álbum e artista) para toda faixa | No teste de 50 faixas, álbuns com só tags que não são gênero ("2020", "14 tracks") impediam a queda para o artista; o nível é escolhido na Fase 3, depois da limpeza |
+| 2026-11-19 | Faixas sem tag nos 3 níveis vão para classificação manual (`data/manual/classificacao_manual.csv`) | Pedido do usuário |
