@@ -41,14 +41,19 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Correções manuais: só contam quando diferem da coluna "Decisão do script" gravada na planilha (antes, decisões antigas do próprio script viravam "correção")
 - ⬜ Revisão do usuário: 3 conflitos (Supercombo: MusicBrainz diz EE, provável homônimo; Alissic: GB; BIA: US)
 
-## Fase 3 — De tags para gêneros ⬜
-Tags do Last.fm são sujas ("seen live", "favorites", "female vocalists", "2010s").
-- ⬜ Lista de bloqueio de tags que não são gênero
-- ⬜ Normalização (minúsculas, hífens, sinônimos: "hip hop" = "hip-hop" = "hiphop")
-- ⬜ Filtrar contra a lista de gêneros do MusicBrainz (só fica o que é gênero reconhecido)
-- ⬜ Sem corte mínimo de faixas por gênero (decidido); o filtro por peso fica na interface
-- ⬜ Peso: combinar a contagem da tag no Last.fm com o nível de origem (faixa > álbum > artista)
-- ⬜ Validação manual com casos conhecidos (ex.: faixas de *Cowboy Carter* → country)
+## Fase 3 — De tags para gêneros ✅ (primeira versão)
+`python -m mapa_generos.generos` → `data/processed/generos_faixas.parquet` (track_id, genero, peso, contagem, nivel).
+- ✅ Filtro por lista branca: só fica tag reconhecida como gênero (MusicBrainz, 2.226 gêneros, + EXTRAS). Anos, "AOTY", "female vocalists", países e nomes de artista caem sozinhos; nenhum gênero aceito coincide com nome de artista das curtidas
+- ✅ Normalização em `musicbrainz.chave()`: sem maiúsculas, acentos, espaços e hífens; rnb = r'n'b = r&b; "and" = "&" (tropicalia → tropicália, alternative rnb → alternative r&b, forro → forró)
+- ✅ EXTRAS (gêneros fora do MusicBrainz) e SINONIMOS em `generos.py` (ex.: rap nacional → brazilian rap, baile funk → funk carioca, trap rap → trap, alt rock → alternative rock)
+- ✅ Nível: faixa → álbum → artista, pulando o nível que fica vazio depois da limpeza (306 faixas, 7,6%, pularam um nível)
+- ✅ Peso: contagem do Last.fm ÷ maior contagem entre os gêneros do nível escolhido (gênero principal = 1); planilha manual e `brazilian` com peso 1
+- ✅ Sem corte mínimo de faixas por gênero
+- ✅ Validação: *Cowboy Carter* → country 1,00, americana 0,39; ITZY → k-pop; Elis Regina → bossa nova, mpb
+- ✅ Resultado (20/11/2026): faixa 1.014 (25,2%) · álbum 1.812 (45,1%) · artista 1.111 (27,7%) · manual 63 (1,6%) · sem gênero 18 (0,4%); 22.817 linhas, 511 gêneros distintos (com `brazilian`), mediana de 6 gêneros por faixa
+- 🔄 18 faixas cujas tags não têm nenhum gênero (só "brazil", "acoustic" etc.) foram acrescentadas a `classificacao_manual.xlsx` — **preenchimento pelo usuário**
+- ⬜ Revisar ambiguidades: "freestyle" (no MusicBrainz é o gênero latino de dança; no Emicida é rap), "hardcore" (punk × eletrônico)
+- ⬜ Decidir se "acoustic", "soundtrack" e "girl group" entram como gênero (hoje ficam de fora)
 
 ## Fase 4 — Hierarquia ❓
 - ⬜ Testar as relações "subgênero de" do MusicBrainz
