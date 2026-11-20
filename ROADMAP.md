@@ -82,7 +82,7 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ ForceAtlas2 calculado no navegador (1.500 iterações, ~1,5 s), posição inicial por família com semente fixa → layout reprodutível. LinLog embolava tudo; `scalingRatio` 30 + gravidade 0,3 separa as famílias
 - ✅ Visual escuro: fundo preto, brilho por nó (gradiente radial somado num canvas 2D por baixo do WebGL), tamanho ∝ √faixas, rótulos só nos maiores (aparecem mais com zoom), arestas de coocorrência finas e curvas
 - ✅ Cores do WebGL pré-multiplicadas pelo alfa (sem isso as transparências somavam e as arestas ficavam brancas)
-- ✅ Cor = mistura das famílias em OKLab; seletor para comparar 3 modos. trap soul: RGB #C89791 (barrento) · OKLab #C39EAE (acinzentado) · **OKLab com croma preservado #FA75B7 (padrão)**
+- ✅ Cor = mistura das famílias em OKLab; seletor para comparar 3 modos. trap soul: RGB #C89791 (barrento) · OKLab #C39EAE (acinzentado) · **OKLab com croma preservado #FA75B7 (padrão, aprovado pelo usuário em 20/11/2026)**
 - ✅ Profundidade: croma × máx(0,45; 1 − 0,16·prof.) e opacidade máx(0,5; 1 − 0,12·prof.)
 - ✅ Clique no gênero → painel com família, profundidade, % brasileiro, pais/subgêneros, vizinhos e lista de faixas por peso, com link para o Spotify; clique nos nomes navega pelo grafo
 - ✅ Busca (lista de sugestões), filtro de peso mínimo do gênero na faixa (recalcula o tamanho dos nós), mínimo de faixas por gênero, alternar arestas de coocorrência e de hierarquia, destacar família pela legenda
