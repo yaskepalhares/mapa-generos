@@ -36,7 +36,22 @@ web/              visualização HTML (o JSON do grafo é gerado aqui)
 
 ## Status
 
-Fase 1 concluída (4.018 curtidas). Próximo: Fase 2, tags do Last.fm. Ver [`ROADMAP.md`](ROADMAP.md).
+Fases 0 a 6 concluídas (primeira versão do mapa em `web/`). Ver [`ROADMAP.md`](ROADMAP.md).
+
+## Atualizar com playlists e correções
+
+1. No [exportify.app](https://exportify.app), exporte "Liked" para `data/raw/liked.csv` e use "Export All" para as playlists; descompacte em `data/raw/playlists/` (só entram as playlists criadas por você).
+2. Rode o pipeline (só faixas e artistas novos consultam o Last.fm/MusicBrainz):
+
+```bash
+python -m mapa_generos.ingest_exportify
+python -m mapa_generos.coletar_tags
+python -m mapa_generos.marcar_brasileiros
+python -m mapa_generos.generos && python -m mapa_generos.hierarquia && python -m mapa_generos.familias && python -m mapa_generos.grafo
+```
+
+3. Na página, a aba **Reclassificar** corrige gêneros por faixa, álbum ou artista; baixe o `reclassificacao.json`, salve em `data/manual/` e rode a última linha acima.
+4. Soltar um CSV do Exportify na página mostra as faixas dele no mapa; as que ainda não estão no mapa saem num `pendentes_<lista>.csv`, que vai para `data/raw/avulsos/`.
 
 ## Configuração
 

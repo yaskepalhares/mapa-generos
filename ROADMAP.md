@@ -15,6 +15,15 @@ Meta: tabela `faixas` com as curtidas (título, artista(s), álbum, data em que 
 - ✅ `ingest_spotifast.py` mantido para atualizações rápidas (o cache do Spotifast só guarda as 50 curtidas mais recentes)
 - ⬜ Mesclar curtidas novas do Spotifast com o CSV sem precisar reexportar
 
+## Fase 1b — Playlists além das Curtidas 🔄
+`python -m mapa_generos.ingest_exportify` junta `data/raw/liked.csv`, `data/raw/playlists/*.csv` e `data/raw/avulsos/*.csv` em `faixas.parquet`.
+- ✅ Deduplicação por ID do Spotify; cada faixa guarda `origens` (Curtidas e/ou nomes das playlists), `curtida`, `curtida_em` e `adicionada_em`
+- ✅ Só playlists criadas pelo usuário: entra a playlist em que ≥ 50% das faixas foram adicionadas pelo dono (coluna "Adicionado por"); dono detectado como o "Adicionado por" mais frequente ou fixado com `--dono`. Playlists do Spotify e de outras pessoas ficam de fora e aparecem no relatório
+- ✅ `data/raw/avulsos/` entra sempre (é onde vai o `pendentes_<lista>.csv` baixado pela página); arquivos locais e episódios são ignorados; faixas com o mesmo ISRC de uma curtida mas outro ID são mantidas e contadas no relatório
+- ✅ Testado: só com `liked.csv` o resultado é idêntico ao anterior (4.018 faixas, mesmas colunas); com playlists sintéticas, a própria entra, a de outra pessoa e a do Spotify ficam de fora
+- ✅ O cache do Last.fm (`coleta_tags.jsonl`, por `track_id`) e do MusicBrainz faz as etapas seguintes só consultarem faixas e artistas novos
+- ⬜ **Exportar as playlists no exportify.app ("Export All") e descompactar em `data/raw/playlists/`** (precisa do login do usuário no Spotify), depois rodar: `ingest_exportify` → `coletar_tags` → `marcar_brasileiros` → `generos` → `hierarquia` → `familias` → `grafo`
+
 ## Fase 2 — Tags por faixa (Last.fm) ✅
 Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ `coletar_tags.py`: `track.getTopTags` → `album.getTopTags` → `artist.getTopTags`, nessa ordem de preferência
@@ -31,7 +40,7 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Cobertura (tem tag no nível, não exclusivo): faixa 1.026 (25,5%) · álbum 3.044 (75,8%) · artista 3.953 (98,4%)
 - ✅ Melhor nível (primeiro com tag): faixa 25,5% · álbum 51,9% · artista 21,0% · sem tag 63 (1,6%)
 - ✅ 72.975 linhas de tag, 3.598 tags distintas (antes da limpeza da Fase 3)
-- 🔄 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) em `data/manual/classificacao_manual.xlsx` — **classificação manual pelo usuário**
+- ✅ 63 faixas sem tag (34 artistas, quase todos independentes/brasileiros; 3 sem artista/título no Spotify) classificadas pelo usuário na planilha; migradas para `data/manual/reclassificacao.json` em 20/11/2026
 
 ## Fase 2b — Tag de país (brazilian) ✅
 - ✅ `marcar_brasileiros.py`: artista principal brasileiro → tag `brazilian` em todas as faixas dele (`data/processed/tags_pais.parquet`)
@@ -51,7 +60,8 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Sem corte mínimo de faixas por gênero
 - ✅ Validação: *Cowboy Carter* → country 1,00, americana 0,39; ITZY → k-pop; Elis Regina → bossa nova, mpb
 - ✅ Resultado (20/11/2026): faixa 1.014 (25,2%) · álbum 1.812 (45,1%) · artista 1.111 (27,7%) · manual 63 (1,6%) · sem gênero 18 (0,4%); 22.817 linhas, 511 gêneros distintos (com `brazilian`), mediana de 6 gêneros por faixa
-- 🔄 18 faixas cujas tags não têm nenhum gênero (só "brazil", "acoustic" etc.) foram acrescentadas a `classificacao_manual.xlsx` — **preenchimento pelo usuário**
+- 🔄 18 faixas cujas tags não têm nenhum gênero (só "brazil", "acoustic" etc.) — **classificar na aba Reclassificar da página**
+- ✅ Correções manuais em `data/manual/reclassificacao.json` (`reclassificacao.py`): por faixa, álbum (ID do Spotify) ou artista (nome do artista principal), com precedência faixa > álbum > artista; substituem as tags do Last.fm da faixa (nível manual, peso 1). A planilha `classificacao_manual.xlsx` foi migrada (`--migrar-planilha`) e removida; `generos_faixas.parquet` e `tags_pais.parquet` saíram idênticos
 - ⬜ Revisar ambiguidades: "freestyle" (no MusicBrainz é o gênero latino de dança; no Emicida é rap), "hardcore" (punk × eletrônico)
 - ⬜ Decidir se "acoustic", "soundtrack" e "girl group" entram como gênero (hoje ficam de fora)
 
@@ -88,6 +98,11 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Busca (lista de sugestões), filtro de peso mínimo do gênero na faixa (recalcula o tamanho dos nós), mínimo de faixas por gênero, alternar arestas de coocorrência e de hierarquia, destacar família pela legenda
 - ✅ Conferido: contagem de faixas por gênero recalculada de `faixas.json` = `faixas` do `grafo.json` nos 509 nós; peso ≥ 0,5 deixa 303 gêneros visíveis
 - ✅ Visual aprovado pelo usuário (20/11/2026)
+- ✅ Saída do `grafo.py` reprodutível: nós ordenados com desempate por nome e Louvain com ordem fixa (antes, a ordem de um `set` mudava a cada execução e, com ela, as posições iniciais do layout)
+- ✅ Filtro "Origem das faixas" (todas, Curtidas ou uma playlist); `faixas.json` ganhou `al` (ID do álbum), `o` (origens) e `n` (nível dos gêneros); `grafo.json` ganhou `origens`
+- ✅ CSV do Exportify solto na página (ou escolhido no painel): o mapa passa a mostrar só as faixas da lista; o painel conta as faixas com gênero, sem gênero, novas, arquivos locais e repetidas, lista as novas e as sem gênero e baixa `pendentes_<lista>.csv` (mesmo cabeçalho) para `data/raw/avulsos/`. Conferido no navegador com um CSV de teste (vírgulas e aspas nos campos, "Tyler\\, The Creator") e o arquivo baixado lido pelo `ingest_exportify`
+- ✅ Aba **Reclassificar** (substitui a planilha Excel): busca por faixa/artista/álbum, filtros "Sem gênero" (18) / "Corrigidas" (63) / "Todas", gêneros atuais com peso e nível de origem, correção por faixa, álbum ou artista (mostra quantas faixas cada nível afeta), gêneros com autocompletar (novos ficam tracejados); edições guardadas no localStorage até baixar `reclassificacao.json`; "Carregar JSON…" ou soltar o JSON na página importa um arquivo
+- ✅ Conferido: correção por artista (MLQ 2N, 3 faixas) baixou o selo de 18 para 15 pendentes; o JSON exportado é idêntico byte a byte ao que o `reclassificacao.py` grava; rodando o pipeline com ele, as 3 faixas saem com os gêneros corrigidos (nível manual) e restam 15 sem gênero. Precedência faixa > álbum > artista testada com *Cowboy Carter* (correção de teste revertida depois)
 - ⬜ Opcional: alternar entre visão hierárquica e por proximidade
 - ⬜ Publicar via GitHub Pages (só quando o usuário pedir)
 
