@@ -113,7 +113,7 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Conferido: correção por artista (MLQ 2N, 3 faixas) baixou o selo de 18 para 15 pendentes; o JSON exportado é idêntico byte a byte ao que o `reclassificacao.py` grava; rodando o pipeline com ele, as 3 faixas saem com os gêneros corrigidos (nível manual) e restam 15 sem gênero. Precedência faixa > álbum > artista testada com *Cowboy Carter* (correção de teste revertida depois)
 - 🧪 Vista 3D (experimento) em `web/mapa3d.html` (3d-force-graph, núcleo com os gêneros maiores, setores por família), integrada com o seletor 2D/3D no topo da página; abre sempre em 2D. A 3D mostra todas as faixas (sem os filtros da 2D)
 - ⬜ Opcional: alternar entre visão hierárquica e por proximidade
-- ⬜ Publicar via GitHub Pages (só quando o usuário pedir)
+- ✅ Publicado no GitHub Pages (20/11/2026, pedido do usuário): https://yaskepalhares.github.io/mapa-generos/ — `.github/workflows/pages.yml` republica a pasta `web/` a cada push na `main` que mexa em `web/`. A 1ª execução falhou por atraso do GitHub em enxergar o artefato e passou ao rodar de novo
 
 ## Fase 7 — Comparativo com o Last.fm ⬜
 - ⬜ Baixar o histórico de scrobbles (`user.getRecentTracks`)
