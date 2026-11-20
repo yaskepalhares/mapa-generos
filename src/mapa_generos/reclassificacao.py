@@ -65,7 +65,8 @@ def escrever(df: pd.DataFrame, path: Path = ARQUIVO) -> None:
                   "rotulo": r.rotulo, "em": r.em} for r in df.itertuples()]
     path.parent.mkdir(parents=True, exist_ok=True)
     # Uma correção por linha: fica legível e o diff do git mostra só o que mudou.
-    corpo = ",\n".join("  " + json.dumps(c, ensure_ascii=False) for c in correcoes)
+    # Mesmo formato e ordem que a página gera (web/app.js, exportarJson).
+    corpo = ",\n".join("  " + json.dumps(c, ensure_ascii=False, separators=(",", ":")) for c in correcoes)
     path.write_text('{"versao": 1, "correcoes": [\n' + corpo + "\n]}\n")
 
 
