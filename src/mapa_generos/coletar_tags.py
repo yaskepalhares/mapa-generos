@@ -18,10 +18,8 @@ Saídas:
   None = sem tag), n_faixa, n_album, n_artista (nº de tags em cada nível)
 Com --amostra, os arquivos ganham o sufixo _amostra.
 
-Faixas sem nenhuma tag nos três níveis vão para data/manual/classificacao_manual.xlsx
-(versionado, ver manual.py) para classificação à mão no Excel: preencha a coluna
-"Gêneros (preencher)", separando com ";". Novas execuções só acrescentam faixas; o
-que já foi preenchido nunca é apagado.
+Faixas sem nenhuma tag nos três níveis são listadas no fim; elas aparecem como
+pendentes na aba "Reclassificar" da página (ver reclassificacao.py).
 
 Uso:
     python -m mapa_generos.coletar_tags --amostra 50   # teste
@@ -40,7 +38,6 @@ from tqdm import tqdm
 
 from . import lastfm
 from .ingest_exportify import separar_artistas
-from .manual import MANUAL, atualizar_manual
 
 ROOT = Path(__file__).resolve().parents[2]
 FAIXAS = ROOT / "data" / "processed" / "faixas.parquet"
@@ -154,11 +151,9 @@ def main(argv: list[str] | None = None) -> None:
     sem_tag = (faixas[faixas.track_id.isin(nivel.track_id[nivel.nivel.isna()])]
                [["track_id", "artista", "faixa", "album"]]
                .assign(motivo=lambda d: d.track_id.map(motivos)))
-    novas, pendentes = atualizar_manual(sem_tag)
     if len(sem_tag):
-        print(f"\nSem tag em nenhum nível ({len(sem_tag)}), para classificação manual:")
+        print(f"\nSem tag em nenhum nível ({len(sem_tag)}); classifique na aba Reclassificar da página:")
         print(sem_tag[["artista", "faixa", "album", "motivo"]].fillna("—").to_string(index=False))
-        print(f"→ {MANUAL.relative_to(ROOT)}: {novas} novas, {pendentes} ainda sem \"generos\" preenchido")
     if erros:
         print(f"\n{len(erros)} faixas com erro (serão tentadas de novo na próxima execução). Ex.: {erros[0][1]}")
     print(f"Salvo em data/processed/tags_faixas{sufixo}.parquet e nivel_faixas{sufixo}.parquet")

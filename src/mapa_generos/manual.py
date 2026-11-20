@@ -1,4 +1,8 @@
-"""Planilha de classificação manual: data/manual/classificacao_manual.xlsx.
+"""OBSOLETO desde 20/11/2026: as correções agora ficam em data/manual/reclassificacao.json
+(ver reclassificacao.py; a planilha foi migrada com --migrar-planilha e removida).
+O módulo continua por causa de EXTRAS, dos estilos do Excel e de ler_manual(), usado na migração.
+
+Planilha de classificação manual: data/manual/classificacao_manual.xlsx.
 
 Faixas sem tag do Last.fm em nenhum nível (faixa, álbum, artista) entram aqui para o
 usuário preencher a coluna "generos" no Excel, separando com ";".

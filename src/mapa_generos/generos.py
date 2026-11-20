@@ -2,7 +2,7 @@
 
 Entradas:
 - data/processed/tags_faixas.parquet   (track_id, tag, contagem, nivel ∈ faixa/album/artista)
-- data/manual/classificacao_manual.xlsx (63 faixas sem tag, gêneros separados por ";")
+- data/manual/reclassificacao.json     (correções por faixa/álbum/artista; ver reclassificacao.py)
 - data/processed/tags_pais.parquet     (track_id, "brazilian", 100, "pais")
 
 Passos:
@@ -15,7 +15,8 @@ Passos:
 3. Peso: dentro do nível escolhido, contagem do Last.fm dividida pela maior contagem
    entre os gêneros desse nível (o gênero principal da faixa tem peso 1). Se várias
    tags viram o mesmo gênero, vale a maior contagem.
-4. Classificação manual (nivel="manual", peso 1) substitui as tags da faixa.
+4. Correções de reclassificacao.json (nivel="manual", peso 1) substituem as tags da faixa
+   (precedência faixa > álbum > artista).
 5. Tag de país "brazilian" (nivel="pais", peso 1) é acrescentada à parte.
 
 Saída: data/processed/generos_faixas.parquet, uma linha por (track_id, genero) com
@@ -31,8 +32,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import reclassificacao
 from .manual import EXTRAS as EXTRAS_MANUAL
-from .manual import atualizar_manual, ler_manual
 from .musicbrainz import chave, mapa_canonico
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -139,15 +140,13 @@ def escolher_nivel(limpas: pd.DataFrame) -> pd.DataFrame:
 
 
 def generos_manuais(canon: dict[str, str]) -> pd.DataFrame:
-    m = ler_manual()
-    linhas = []
-    for tid, txt in zip(m.track_id, m.generos):
-        for g in (p.strip() for p in str(txt).split(";")):
-            if g:
-                # gênero digitado à mão fora da lista é mantido como escrito (minúsculas)
-                linhas.append((tid, canon.get(chave(g), g.lower()), 100, "manual", 1.0))
-    df = pd.DataFrame(linhas, columns=["track_id", "genero", "contagem", "nivel", "peso"])
-    return df.drop_duplicates(["track_id", "genero"])
+    """Correções de reclassificacao.json já resolvidas por faixa (faixa > álbum > artista)."""
+    faixas = pd.read_parquet(FAIXAS, columns=["track_id", "album_id", "artista"])
+    ap = reclassificacao.aplicar(faixas)
+    # gênero digitado à mão fora da lista é mantido como escrito (minúsculas)
+    ap["genero"] = ap.genero_digitado.map(lambda g: canon.get(chave(g), g.lower()))
+    df = ap.assign(contagem=100, nivel="manual", peso=1.0)
+    return df[["track_id", "genero", "contagem", "nivel", "peso"]].drop_duplicates(["track_id", "genero"])
 
 
 def gerar() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -227,21 +226,13 @@ def relatorio(out: pd.DataFrame, limpas: pd.DataFrame) -> None:
     mostra("Amostra aleatória (semente 42)", faixas.track_id.isin(amostra))
 
 
-def mandar_para_manual(out: pd.DataFrame) -> tuple[int, int]:
-    """Faixas sem nenhum gênero depois da limpeza vão para a planilha manual."""
-    faixas = pd.read_parquet(FAIXAS, columns=["track_id", "artista", "faixa", "album"])
-    com = out.track_id[out.nivel != "pais"]
-    sem = faixas[~faixas.track_id.isin(com)]
-    if sem.track_id.isin(ler_manual().track_id).all():
-        return 0, 0  # nada novo: não regrava a planilha
-    return atualizar_manual(sem)
-
-
 def main() -> None:
     out, limpas = gerar()
-    novas, pendentes = mandar_para_manual(out)
-    if novas:
-        print(f"planilha manual: {novas} faixas sem gênero acrescentadas ({pendentes} a preencher)")
+    faixas = pd.read_parquet(FAIXAS, columns=["track_id"])
+    sem = int((~faixas.track_id.isin(out.track_id[out.nivel != "pais"])).sum())
+    if sem:
+        print(f"{sem} faixas sem gênero: corrija na aba Reclassificar da página "
+              f"e salve o JSON em data/manual/reclassificacao.json")
     out.to_parquet(SAIDA, index=False)
     print(f"{SAIDA.relative_to(ROOT)}: {len(out):,} linhas".replace(",", "."))
     relatorio(out, limpas)

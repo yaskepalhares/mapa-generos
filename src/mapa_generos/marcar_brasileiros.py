@@ -5,7 +5,7 @@ Sinais, por artista principal (o 1º artista da faixa no Spotify):
    do Spotify; se continuar ambíguo, o MusicBrainz não decide).
 2. Last.fm: tag de país no nível do artista ("brazilian", "brazil", "brasil"…).
    Mesmo com peso baixo ela é confiável (Don L, BK, Froid têm peso 1–4).
-3. Planilha manual: gêneros preenchidos pelo usuário que indicam Brasil
+3. Reclassificação manual: gêneros corrigidos pelo usuário que indicam Brasil
    ("brazilian rap", "funk brasileiro", "forró"…).
 
 Regra: brasileiro se o MusicBrainz diz BR, ou se o Last.fm/planilha dizem Brasil e o
@@ -39,7 +39,8 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from tqdm import tqdm
 
 from . import musicbrainz
-from .manual import FONTE, FONTE_TITULO, FUNDO_PREENCHER, FUNDO_TITULO, FUNDO_TITULO_PREENCHER, ler_manual
+from . import reclassificacao
+from .manual import FONTE, FONTE_TITULO, FUNDO_PREENCHER, FUNDO_TITULO, FUNDO_TITULO_PREENCHER
 
 ROOT = Path(__file__).resolve().parents[2]
 FAIXAS = ROOT / "data" / "processed" / "faixas.parquet"
@@ -99,8 +100,10 @@ def sinais_por_artista(faixas: pd.DataFrame) -> pd.DataFrame:
         lambda g: g.loc[g.contagem.idxmax(), "tag"] + f" ({g.contagem.max()})", include_groups=False)
     art["tag_lastfm"] = art.artista.map(lf).fillna("")
 
-    # 3) Planilha manual
-    m = ler_manual()
+    # 3) Reclassificação manual (reclassificacao.json), gêneros por faixa juntados com ";"
+    ap = reclassificacao.aplicar(faixas)
+    m = (ap.groupby("track_id").genero_digitado.agg("; ".join).rename("generos").reset_index()
+         .merge(faixas[["track_id", "artista"]], on="track_id"))
     m = m[m.generos.str.contains(GENERO_BR_MANUAL)]
     art["manual"] = art.artista.map(m.groupby("artista").generos.first()).fillna("")
     return art
