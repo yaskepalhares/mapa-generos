@@ -8,6 +8,7 @@ Usada para separar tags do Last.fm que são gênero das que não são ("2024",
 from __future__ import annotations
 
 import re
+import unicodedata
 from pathlib import Path
 
 import requests
@@ -19,11 +20,16 @@ USER_AGENT = "mapa-generos/0.0.1 (uso pessoal)"
 
 
 def chave(nome: str) -> str:
-    """Chave de comparação: minúsculas, sem espaços, hífens ou sublinhados.
+    """Chave de comparação: minúsculas, sem acentos, espaços, hífens ou sublinhados.
 
-    Assim "Hip-Hop", "hip hop" e "hiphop" viram a mesma coisa.
+    Assim "Hip-Hop", "hip hop" e "hiphop" viram a mesma coisa, "forro" = "forró",
+    "rnb" = "r'n'b" = "r&b" e "drum & bass" = "drum and bass".
     """
-    return re.sub(r"[\s\-_]+", "", nome.lower())
+    s = unicodedata.normalize("NFKD", nome.lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"\b(?:rnb|r ?n ?b|r'n'b|r and b|rhythm and blues)\b", "r&b", s)
+    s = re.sub(r"\s+(?:and|n|'n')\s+", " & ", s)
+    return re.sub(r"[\s\-_]+", "", s)
 
 
 def generos_musicbrainz(atualizar: bool = False) -> list[str]:
@@ -46,7 +52,6 @@ def mapa_canonico() -> dict[str, str]:
 import hashlib
 import json
 import time
-import unicodedata
 
 API = "https://musicbrainz.org/ws/2/"
 CACHE_ARTISTAS = ROOT / "data" / "cache" / "musicbrainz" / "api"
