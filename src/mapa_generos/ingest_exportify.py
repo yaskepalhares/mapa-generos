@@ -23,6 +23,8 @@ Arquivos locais (spotify:local:…) e episódios de podcast são ignorados.
 Uso:
     python -m mapa_generos.ingest_exportify                    # liked.csv + playlists + avulsos
     python -m mapa_generos.ingest_exportify --dono SEU_USUARIO
+    python -m mapa_generos.ingest_exportify --todas            # sem checar o dono (export já
+                                                               # filtrado com owner:me no Exportify)
     python -m mapa_generos.ingest_exportify --so-curtidas      # como antes
 """
 
@@ -130,6 +132,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--playlists", type=Path, default=PLAYLISTS, help="pasta com os CSVs de playlist")
     ap.add_argument("--avulsos", type=Path, default=AVULSOS, help="pasta com CSVs que entram sempre")
     ap.add_argument("--dono", help="seu usuário do Spotify (padrão: detectado)")
+    ap.add_argument("--todas", action="store_true",
+                    help="inclui todas as playlists da pasta, sem checar o dono (ex.: export com owner:me)")
     ap.add_argument("--so-curtidas", action="store_true", help="ignora playlists e avulsos")
     args = ap.parse_args(argv)
 
@@ -145,10 +149,13 @@ def main(argv: list[str] | None = None) -> None:
         if listas:
             dono = args.dono or detectar_dono(listas)
             tab = classificar_playlists(listas, dono)
+            if args.todas:
+                tab["entra"] = True
             quem = pd.concat([d.adicionado_por for d in listas.values()]).replace("", "(Spotify/sem dono)")
             print("Quem mais adicionou faixas: " + " · ".join(f"{u} {n}" for u, n in quem.value_counts().head(3).items()))
             print(f"\nPlaylists em {args.playlists.relative_to(ROOT) if args.playlists.is_relative_to(ROOT) else args.playlists}: "
-                  f"{len(tab)} · dono {'informado' if args.dono else 'detectado'}: {dono}")
+                  f"{len(tab)} · dono {'informado' if args.dono else 'detectado'}: {dono}"
+                  + (" · --todas: sem checar o dono" if args.todas else ""))
             for r in tab.sort_values(["entra", "faixas"], ascending=[False, False]).itertuples():
                 marca = "entra " if r.entra else "fora  "
                 print(f"  {marca} {r.playlist[:50]:<50} {r.faixas:>5} faixas · {r.frac_dono:5.0%} adicionadas por você")
