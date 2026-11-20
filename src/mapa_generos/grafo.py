@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import math
+import shutil
 from collections import defaultdict
 from itertools import combinations
 from pathlib import Path
@@ -28,6 +29,7 @@ from pathlib import Path
 import networkx as nx
 import pandas as pd
 
+from . import reclassificacao
 from .familias import COR, misturar
 from .hierarquia import NAO_GENERO, PAIS_RELACOES
 
@@ -41,8 +43,16 @@ def carregar():
     gf = pd.read_parquet(PROC / "generos_faixas.parquet")
     fam = pd.read_parquet(PROC / "generos_familias.parquet")
     rel = pd.read_parquet(PROC / "generos_relacoes.parquet")
-    faixas = pd.read_parquet(PROC / "faixas.parquet", columns=["track_id", "faixa", "artista", "album"])
-    return gf, fam, rel, faixas
+    faixas = pd.read_parquet(PROC / "faixas.parquet")
+    if "origens" not in faixas:  # faixas.parquet antigo, só com as Curtidas
+        faixas["origens"] = [["Curtidas"]] * len(faixas)
+    return gf, fam, rel, faixas[["track_id", "faixa", "artista", "album", "album_id", "origens"]]
+
+
+def lista_origens(faixas: pd.DataFrame) -> list[str]:
+    """Curtidas primeiro; depois as playlists por nº de faixas."""
+    cont = faixas.origens.explode().value_counts()
+    return sorted(cont.index, key=lambda o: (o != "Curtidas", -cont[o], o))
 
 
 def coocorrencia(gf: pd.DataFrame) -> pd.DataFrame:
@@ -81,7 +91,7 @@ def gerar() -> dict:
     hier = hier.drop_duplicates(["origem", "destino"])
 
     G = nx.Graph()
-    G.add_nodes_from(presentes)
+    G.add_nodes_from(sorted(presentes))  # ordem fixa: set de str muda a cada execução
     G.add_weighted_edges_from(zip(podadas.a, podadas.b, podadas.cosseno))
     comunidades = nx.community.louvain_communities(G, weight="weight", seed=42)
     com = {g: i for i, c in enumerate(sorted(comunidades, key=len, reverse=True)) for g in c}
@@ -95,14 +105,17 @@ def gerar() -> dict:
         "profundidade": int(prof[g]),
         "comunidade": com[g],
         "pct_brasileiro": round(float(pct_br[g]), 3),
-    } for g in sorted(presentes, key=lambda g: -n[g])]
+    } for g in sorted(presentes, key=lambda g: (-n[g], g))]
     arestas = (
         [{"source": r.a, "target": r.b, "tipo": "coocorrencia", "peso": round(r.cosseno, 4),
           "faixas_em_comum": int(r.faixas_em_comum)} for r in podadas.itertuples()]
         + [{"source": r.origem, "target": r.destino, "tipo": "hierarquia", "relacao": r.relacao}
            for r in hier.itertuples()]
     )
+    origens = lista_origens(faixas)
+    cont = faixas.origens.explode().value_counts()
     return {"familias": COR, "nos": nos, "arestas": arestas,
+            "origens": [{"nome": o, "faixas": int(cont[o])} for o in origens],
             "_estat": {"co_total": len(co), "co_podadas": len(podadas), "hier": len(hier),
                        "comunidades": len(comunidades), "componentes": nx.number_connected_components(G)}}
 
@@ -113,7 +126,11 @@ def exportar_faixas(path: Path) -> int:
     gf = gf[~gf.genero.isin(NAO_GENERO)]
     gen = gf.groupby("track_id").apply(
         lambda d: [[g, round(p, 3)] for g, p in zip(d.genero, d.peso)], include_groups=False)
+    nivel = gf.groupby("track_id").nivel.first()  # faixa/album/artista/manual
+    idx = {o: i for i, o in enumerate(lista_origens(faixas))}
+    # Campos curtos: al = ID do álbum, o = índices em grafo.json "origens", n = nível dos gêneros
     lista = [{"id": r.track_id, "faixa": r.faixa, "artista": r.artista, "album": r.album,
+              "al": r.album_id, "o": [idx[o] for o in r.origens], "n": nivel.get(r.track_id, ""),
               "brasileiro": r.track_id in br, "generos": gen.get(r.track_id, [])}
              for r in faixas.fillna("").itertuples()]
     path.write_text(json.dumps(lista, ensure_ascii=False, separators=(",", ":")))
@@ -126,6 +143,9 @@ def main() -> None:
     est = g.pop("_estat")
     (WEB / "grafo.json").write_text(json.dumps(g, ensure_ascii=False, separators=(",", ":")))
     nf = exportar_faixas(WEB / "faixas.json")
+    # Cópia das correções já aplicadas, para a aba Reclassificar partir delas
+    if reclassificacao.ARQUIVO.exists():
+        shutil.copyfile(reclassificacao.ARQUIVO, WEB / "reclassificacao.json")
     print(f"web/grafo.json: {len(g['nos'])} gêneros, {len(g['arestas'])} arestas "
           f"(coocorrência {est['co_podadas']} de {est['co_total']} após a poda K={K}; hierarquia {est['hier']})")
     print(f"  comunidades (Louvain): {est['comunidades']} · componentes conexos: {est['componentes']}")
