@@ -25,3 +25,6 @@
 | 2026-11-20 | Hierarquia **mantida**, com "subgenre of" + "fusion of" como pais | Só 13,4% dos gêneros sem pai (limite era ~30%), 0 ciclos, 7,3% com vários pais |
 | 2026-11-20 | Relações de gênero lidas da página web do MusicBrainz, com cache | A API ws/2 não expõe relações entre gêneros |
 | 2026-11-20 | Tag "hardcore" = hardcore punk | Pedido do usuário: quase todo o hardcore das curtidas é o do rock |
+| 2026-11-20 | 11 famílias de cor a partir das raízes da hierarquia; indie como família própria; "brasileira" separada da tag `brazilian` | Aprovado pelo usuário |
+| 2026-11-20 | Grafo: coocorrência normalizada pelo cosseno, poda top-4 por gênero, mais todas as arestas de hierarquia | Evita a "bola de pelo" e mantém a estrutura de subgêneros |
+| 2026-11-20 | `web/grafo.json` e `web/faixas.json` versionados | São a entrada do site (GitHub Pages); publicar continua sendo decisão do usuário |

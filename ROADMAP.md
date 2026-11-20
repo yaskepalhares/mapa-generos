@@ -65,13 +65,16 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Os sem pai são quase todos raízes naturais (rock, pop, hip hop, r&b, soul, mpb, jazz, samba…); ponderado por faixas, 39,4% das ocorrências são dessas raízes
 - ✅ Pais à mão para os EXTRAS (`PAIS_EXTRAS`, ex.: brazilian rap → hip hop, k-indie → indie); faltam "black music" e "macumba"
 - ✅ **Decisão: manter a hierarquia** (grafo acíclico com vários pais permitidos); "fusion of" serve para a mistura de cores
-- 🔄 Famílias de cor: agrupar as ~39 raízes em ~11 famílias e calcular o vetor de família de cada gênero (pais divididos igualmente). Teste: 472 de 509 gêneros e 3.995 de 4.018 faixas ganham família; 37 gêneros pequenos sem família (sertanejo, choro, gospel, ska…)
+- ✅ Famílias de cor (aprovadas em 20/11/2026): `familias.py` agrupa as 39 raízes em 11 famílias (rock, hip hop, pop, r&b/soul, brasileira, eletrônica, indie, folk/country, jazz/blues, latina/reggae, outros), cada uma com uma cor; gênero herda o vetor dos pais dividido igualmente → `generos_familias.parquet`
+- ✅ Resultado: 509 de 509 gêneros com família (472 pela hierarquia, 37 encaixados à mão em `MANUAL`: sertanejo, choro, ska…); 36 gêneros misturam famílias (pop rock, trap soul, emo rap, country pop…); profundidade 0: 39 · 1: 265 · 2: 133 · 3: 64 · 4: 8
 
-## Fase 5 — Grafo ⬜
-- ⬜ Nós = gêneros (tamanho = nº de faixas); arestas = coocorrência na mesma faixa (peso = nº de faixas em comum)
-- ⬜ Poda de arestas fracas (limiar ou backbone) para não virar uma bola de pelo
-- ⬜ Detecção de comunidades (Louvain/Leiden) para colorir "famílias"
-- ⬜ Exportar `web/grafo.json`
+## Fase 5 — Grafo ✅ (primeira versão)
+`python -m mapa_generos.grafo` → `web/grafo.json` (nós, arestas, cores das famílias) e `web/faixas.json` (faixas com gêneros e pesos).
+- ✅ Nós = 509 gêneros; tamanho = nº de faixas; atributos: vetor de famílias, cor misturada, profundidade, comunidade, % de faixas brasileiras (a tag `brazilian` vira atributo, não nó)
+- ✅ Arestas de coocorrência: força = soma do menor peso nas faixas em comum, normalizada pelo cosseno; 7.473 pares no total
+- ✅ Poda: cada gênero mantém suas 4 arestas mais fortes → 1.439 de coocorrência + 459 de hierarquia = 1.898 arestas
+- ✅ Louvain (semente 42): 23 comunidades, que batem com as famílias (hip hop, rock, pop, r&b/soul, brasileira, emo/punk, metal, eletrônica…); 4 gêneros isolados de uma faixa só (brega funk, macumba, christmas music, pagodão), ligados só pela hierarquia
+- ⬜ Mistura de cor em RGB fica barrenta em alguns casos (trap soul = roxo + amarelo → #C89691); testar mistura em OKLab na Fase 6
 
 ## Fase 6 — Visualização HTML ⬜
 - ⬜ Layout de força (ForceAtlas2) com sigma.js ou Cytoscape
