@@ -231,7 +231,10 @@ def mandar_para_manual(out: pd.DataFrame) -> tuple[int, int]:
     """Faixas sem nenhum gênero depois da limpeza vão para a planilha manual."""
     faixas = pd.read_parquet(FAIXAS, columns=["track_id", "artista", "faixa", "album"])
     com = out.track_id[out.nivel != "pais"]
-    return atualizar_manual(faixas[~faixas.track_id.isin(com)])
+    sem = faixas[~faixas.track_id.isin(com)]
+    if sem.track_id.isin(ler_manual().track_id).all():
+        return 0, 0  # nada novo: não regrava a planilha
+    return atualizar_manual(sem)
 
 
 def main() -> None:

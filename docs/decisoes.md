@@ -20,3 +20,4 @@
 | 2026-11-20 | Peso = contagem ÷ maior contagem entre os gêneros do nível (principal = 1); manual e `brazilian` = 1 | O 100 do Last.fm muitas vezes é de uma tag que não é gênero ("female vocalists") |
 | 2026-11-20 | Variações nacionais escritas pelo usuário viram gênero próprio (brazilian rap, brazilian indie…), além da tag `brazilian` | Mantém os subgêneros que o usuário usa na planilha manual |
 | 2026-11-20 | Faixas sem nenhum gênero após a limpeza também vão para a planilha manual | Mesma regra das faixas sem tag |
+| 2026-11-20 | Visual principal: grafo escuro com nós brilhantes; cor = família (gênero-raiz), mistura de cores para gêneros entre famílias, opacidade/cor mudando com a distância da raiz | Referência enviada pelo usuário; a hierarquia (Fase 4) passa a servir também para colorir |

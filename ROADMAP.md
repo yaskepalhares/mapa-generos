@@ -68,6 +68,8 @@ Meta: cada faixa com uma lista de tags ponderadas.
 
 ## Fase 6 — Visualização HTML ⬜
 - ⬜ Layout de força (ForceAtlas2) com sigma.js ou Cytoscape
+- ⬜ Visual de referência (20/11/2026): fundo escuro, nós com brilho, tamanho = nº de faixas, rótulos nos maiores, arestas finas e curvas
+- ⬜ Cor por família: cada gênero-raiz (rock, hip hop, pop, r&b, eletrônica, MPB…) tem uma cor; o subgênero herda a cor da família e, quanto mais longe da raiz, mais muda a opacidade/saturação; quem fica entre famílias (fusões, ex.: pop rap, trap soul) mistura as cores na proporção das famílias. Exige da Fase 4 um vetor "quanto de cada família" por gênero (pais + fusões e/ou coocorrência)
 - ⬜ Clique no gênero → lista de faixas; busca; filtro por peso
 - ⬜ Opcional: alternar entre visão hierárquica e por proximidade
 - ⬜ Publicar via GitHub Pages
