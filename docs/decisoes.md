@@ -21,3 +21,7 @@
 | 2026-11-20 | Variações nacionais escritas pelo usuário viram gênero próprio (brazilian rap, brazilian indie…), além da tag `brazilian` | Mantém os subgêneros que o usuário usa na planilha manual |
 | 2026-11-20 | Faixas sem nenhum gênero após a limpeza também vão para a planilha manual | Mesma regra das faixas sem tag |
 | 2026-11-20 | Visual principal: grafo escuro com nós brilhantes; cor = família (gênero-raiz), mistura de cores para gêneros entre famílias, opacidade/cor mudando com a distância da raiz | Referência enviada pelo usuário; a hierarquia (Fase 4) passa a servir também para colorir |
+
+| 2026-11-20 | Hierarquia **mantida**, com "subgenre of" + "fusion of" como pais | Só 13,4% dos gêneros sem pai (limite era ~30%), 0 ciclos, 7,3% com vários pais |
+| 2026-11-20 | Relações de gênero lidas da página web do MusicBrainz, com cache | A API ws/2 não expõe relações entre gêneros |
+| 2026-11-20 | Tag "hardcore" = hardcore punk | Pedido do usuário: quase todo o hardcore das curtidas é o do rock |

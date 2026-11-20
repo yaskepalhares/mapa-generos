@@ -55,10 +55,17 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ⬜ Revisar ambiguidades: "freestyle" (no MusicBrainz é o gênero latino de dança; no Emicida é rap), "hardcore" (punk × eletrônico)
 - ⬜ Decidir se "acoustic", "soundtrack" e "girl group" entram como gênero (hoje ficam de fora)
 
-## Fase 4 — Hierarquia ❓
-- ⬜ Testar as relações "subgênero de" do MusicBrainz
-- ⬜ Decidir: hierarquia explícita (rock → post-punk → darkwave) **ou** só proximidade
-- Critério para desistir da hierarquia: se mais de ~30% dos seus gêneros não tiverem pai no MusicBrainz, ou se os ciclos/múltiplos pais deixarem o mapa confuso, fica só proximidade.
+## Fase 4 — Hierarquia ✅ (mantida)
+`python -m mapa_generos.hierarquia` → `data/processed/generos_relacoes.parquet` (origem, relacao, destino, fonte).
+- ✅ A API do MusicBrainz não devolve relações entre gêneros (`inc=genre-rels` é ignorado); as relações são lidas da página web de cada gênero, com cache em `data/cache/musicbrainz/genero_rels/` (`--so-cache` evita a rede)
+- ✅ Bug achado na 1ª coleta: a tabela "from: <país>" vem antes da de gêneros e o parser parava nela (142 páginas vazias); corrigido e recoletado
+- ✅ Coleta (20/11/2026): 511 gêneros visitados (os seus + ancestrais), 3.535 relações; 10 páginas sem nenhuma relação
+- ✅ Pais por "subgenre of": 408 de 509 gêneros (80,2%) têm pai; sem pai 19,8%
+- ✅ Pais por "subgenre of" + "fusion of": 441 (86,6%) têm pai; **sem pai 13,4%** (abaixo do limite de ~30%); vários pais 37 (7,3%); **0 ciclos**
+- ✅ Os sem pai são quase todos raízes naturais (rock, pop, hip hop, r&b, soul, mpb, jazz, samba…); ponderado por faixas, 39,4% das ocorrências são dessas raízes
+- ✅ Pais à mão para os EXTRAS (`PAIS_EXTRAS`, ex.: brazilian rap → hip hop, k-indie → indie); faltam "black music" e "macumba"
+- ✅ **Decisão: manter a hierarquia** (grafo acíclico com vários pais permitidos); "fusion of" serve para a mistura de cores
+- 🔄 Famílias de cor: agrupar as ~39 raízes em ~11 famílias e calcular o vetor de família de cada gênero (pais divididos igualmente). Teste: 472 de 509 gêneros e 3.995 de 4.018 faixas ganham família; 37 gêneros pequenos sem família (sertanejo, choro, gospel, ska…)
 
 ## Fase 5 — Grafo ⬜
 - ⬜ Nós = gêneros (tamanho = nº de faixas); arestas = coocorrência na mesma faixa (peso = nº de faixas em comum)
