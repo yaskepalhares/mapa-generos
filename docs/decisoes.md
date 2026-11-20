@@ -28,3 +28,5 @@
 | 2026-11-20 | 11 famílias de cor a partir das raízes da hierarquia; indie como família própria; "brasileira" separada da tag `brazilian` | Aprovado pelo usuário |
 | 2026-11-20 | Grafo: coocorrência normalizada pelo cosseno, poda top-4 por gênero, mais todas as arestas de hierarquia | Evita a "bola de pelo" e mantém a estrutura de subgêneros |
 | 2026-11-20 | `web/grafo.json` e `web/faixas.json` versionados | São a entrada do site (GitHub Pages); publicar continua sendo decisão do usuário |
+| 2026-11-20 | Fase 6 com sigma.js 3 + graphology via CDN, sem etapa de build; layout ForceAtlas2 calculado no navegador com semente fixa | Página estática simples para o GitHub Pages; 509 nós calculam em ~1,5 s |
+| 2026-11-20 | Mistura de cores padrão: OKLab com croma preservado (matiz da média OKLab, croma = média dos cromas); RGB e OKLab puro ficam no seletor | RGB fica barrento e OKLab puro fica cinza quando as famílias são opostas (trap soul) |

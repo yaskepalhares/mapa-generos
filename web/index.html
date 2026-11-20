@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa de gêneros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <div id="mapa"></div>
+
+  <header id="topo">
+    <h1>Mapa de gêneros</h1>
+    <p id="resumo">carregando…</p>
+    <input id="busca" type="search" list="lista-generos" placeholder="Buscar gênero…" autocomplete="off">
+    <datalist id="lista-generos"></datalist>
+  </header>
+
+  <aside id="controles">
+    <details open>
+      <summary>Filtros</summary>
+      <label>Peso mínimo do gênero na faixa: <b id="v-peso">0,00</b>
+        <input id="peso" type="range" min="0" max="1" step="0.05" value="0">
+      </label>
+      <label>Mínimo de faixas por gênero: <b id="v-min">1</b>
+        <input id="min-faixas" type="range" min="0" max="100" step="1" value="0">
+      </label>
+      <label class="check"><input id="ar-cooc" type="checkbox" checked> Arestas de coocorrência</label>
+      <label class="check"><input id="ar-hier" type="checkbox"> Arestas de hierarquia</label>
+      <label>Mistura de cores
+        <select id="mistura">
+          <option value="oklab-croma">OKLab com croma preservado</option>
+          <option value="oklab">OKLab</option>
+          <option value="rgb">RGB (Fase 5)</option>
+        </select>
+      </label>
+      <p id="contagem" class="nota"></p>
+    </details>
+    <details open>
+      <summary>Famílias</summary>
+      <ul id="legenda"></ul>
+      <p class="nota">Clique numa família para destacá-la. Quanto mais longe da raiz, mais apagada a cor.</p>
+    </details>
+  </aside>
+
+  <aside id="painel" hidden>
+    <button id="fechar" aria-label="Fechar">×</button>
+    <h2 id="p-nome"></h2>
+    <p id="p-meta"></p>
+    <div id="p-familias"></div>
+    <p id="p-pais"></p>
+    <p id="p-vizinhos"></p>
+    <h3 id="p-titulo-faixas"></h3>
+    <ol id="p-faixas"></ol>
+  </aside>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
