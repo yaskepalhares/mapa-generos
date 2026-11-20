@@ -14,6 +14,10 @@
   <header id="topo">
     <h1>Mapa de gêneros</h1>
     <p id="resumo">carregando…</p>
+    <nav id="abas">
+      <button id="aba-mapa" class="ativa">Mapa</button>
+      <button id="aba-reclass">Reclassificar <span id="n-pendentes" class="selo"></span></button>
+    </nav>
     <input id="busca" type="search" list="lista-generos" placeholder="Buscar gênero…" autocomplete="off">
     <datalist id="lista-generos"></datalist>
   </header>
@@ -36,7 +40,26 @@
           <option value="rgb">RGB (Fase 5)</option>
         </select>
       </label>
+      <label>Origem das faixas
+        <select id="origem"></select>
+      </label>
       <p id="contagem" class="nota"></p>
+    </details>
+    <details id="sec-csv" open>
+      <summary>Lista do Exportify</summary>
+      <div id="csv-vazio">
+        <p class="nota">Arraste um CSV do Exportify para a página (ou <label class="link"><input id="csv-arquivo" type="file" accept=".csv,text/csv" hidden>escolha o arquivo</label>) para ver as faixas dele no mapa.</p>
+      </div>
+      <div id="csv-cheio" hidden>
+        <p id="csv-resumo"></p>
+        <div class="botoes">
+          <button id="csv-baixar">Baixar pendentes</button>
+          <button id="csv-limpar">Limpar</button>
+        </div>
+        <p class="nota" id="csv-dica"></p>
+        <details id="csv-det-novas"><summary id="csv-t-novas"></summary><ol id="csv-novas" class="lista"></ol></details>
+        <details id="csv-det-sem"><summary id="csv-t-sem"></summary><ol id="csv-sem" class="lista"></ol></details>
+      </div>
     </details>
     <details open>
       <summary>Famílias</summary>
@@ -55,6 +78,51 @@
     <h3 id="p-titulo-faixas"></h3>
     <ol id="p-faixas"></ol>
   </aside>
+
+  <section id="reclass" hidden>
+    <div class="col-lista">
+      <input id="r-busca" type="search" placeholder="Buscar faixa, artista ou álbum…" autocomplete="off">
+      <div id="r-filtros" class="chips">
+        <button data-filtro="pendentes" class="ativa">Sem gênero <span id="r-n-pendentes"></span></button>
+        <button data-filtro="corrigidas">Corrigidas <span id="r-n-corrigidas"></span></button>
+        <button data-filtro="todas">Todas</button>
+      </div>
+      <ol id="r-lista" class="lista"></ol>
+      <p id="r-mais" class="nota"></p>
+    </div>
+    <div class="col-editor">
+      <div id="r-vazio" class="nota">Escolha uma faixa à esquerda para ver e corrigir os gêneros.</div>
+      <div id="r-editor" hidden>
+        <h2 id="r-faixa"></h2>
+        <p id="r-meta" class="nota"></p>
+        <h3>Gêneros no mapa agora</h3>
+        <div id="r-atuais"></div>
+        <h3>Corrigir</h3>
+        <div id="r-escopo" class="chips"></div>
+        <div id="r-chips" class="chips editaveis"></div>
+        <input id="r-novo" list="r-lista-generos" placeholder="Digite um gênero e Enter (vírgula para vários)" autocomplete="off">
+        <datalist id="r-lista-generos"></datalist>
+        <p id="r-aviso" class="nota"></p>
+        <div class="botoes">
+          <button id="r-salvar" class="primario">Salvar correção</button>
+          <button id="r-remover">Remover correção</button>
+        </div>
+      </div>
+      <footer id="r-rodape">
+        <p id="r-estado"></p>
+        <div class="botoes">
+          <button id="r-baixar" class="primario">Baixar reclassificacao.json</button>
+          <label class="botao"><input id="r-carregar" type="file" accept=".json,application/json" hidden>Carregar JSON…</label>
+          <button id="r-descartar">Descartar alterações</button>
+        </div>
+        <p class="nota">Salve o arquivo em <code>data/manual/reclassificacao.json</code> (substituindo o anterior) e rode
+          <code>python -m mapa_generos.generos &amp;&amp; python -m mapa_generos.hierarquia &amp;&amp; python -m mapa_generos.familias &amp;&amp; python -m mapa_generos.grafo</code>.
+          As correções só mudam o mapa depois disso.</p>
+      </footer>
+    </div>
+  </section>
+
+  <div id="soltar" hidden><div>Solte o CSV do Exportify (ou um reclassificacao.json)</div></div>
 
   <script type="module" src="app.js"></script>
 </body>

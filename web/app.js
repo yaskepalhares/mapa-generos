@@ -1,6 +1,8 @@
 // Mapa de gêneros — Fase 6.
 // Lê grafo.json e faixas.json, calcula o layout ForceAtlas2 no navegador e
 // desenha com sigma.js. O brilho dos nós é uma camada 2D por baixo do WebGL.
+// Extras: filtro por origem (Curtidas/playlists), CSV do Exportify solto na
+// página e aba Reclassificar, que exporta data/manual/reclassificacao.json.
 
 import Graph from "https://cdn.jsdelivr.net/npm/graphology@0.25.4/+esm";
 import forceAtlas2 from "https://cdn.jsdelivr.net/npm/graphology-layout-forceatlas2@0.10.1/+esm";
@@ -107,16 +109,20 @@ function aleatorio(semente) {
 }
 
 const fmt = (n) => n.toLocaleString("pt-BR");
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const pct = (x) => (x * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%";
 const tamanho = (n) => (n > 0 ? 1.6 + 0.62 * Math.sqrt(n) : 0);
 const $ = (id) => document.getElementById(id);
 
 // ---------------------------------------------------------------- dados
 
-const [dados, faixas] = await Promise.all([
+const [dados, faixas, reclassBase] = await Promise.all([
   fetch("grafo.json").then((r) => r.json()),
   fetch("faixas.json").then((r) => r.json()),
+  // correções já aplicadas pelo pipeline (cópia de data/manual/reclassificacao.json)
+  fetch("reclassificacao.json").then((r) => (r.ok ? r.json() : { correcoes: [] })).catch(() => ({ correcoes: [] })),
 ]);
+const origens = dados.origens ?? [{ nome: "Curtidas", faixas: faixas.length }];
 const coresFamilia = dados.familias;
 
 // Índice gênero → [(índice da faixa, peso)], para o filtro e o painel.
@@ -189,7 +195,12 @@ const estado = {
   vizinhos: new Set(),
   familia: null,
   hover: null,
+  origem: -1, // índice em `origens`; -1 = todas
+  csv: null, // lista do Exportify solta na página
+  sub: null, // Set de índices de faixas na seleção atual (null = todas)
 };
+
+const naSelecao = (i) => !estado.sub || estado.sub.has(i);
 
 function recolorir() {
   graph.forEachNode((id, a) => {
@@ -209,7 +220,7 @@ function recolorir() {
 function recontar() {
   graph.forEachNode((id) => {
     const lista = porGenero.get(id) ?? [];
-    const n = lista.reduce((acc, [, p]) => acc + (p >= estado.pesoMin - 1e-9 ? 1 : 0), 0);
+    const n = lista.reduce((acc, [i, p]) => acc + (p >= estado.pesoMin - 1e-9 && naSelecao(i) ? 1 : 0), 0);
     graph.mergeNodeAttributes(id, { contagem: n, size: tamanho(n) });
   });
 }
@@ -280,7 +291,8 @@ const renderer = new Sigma(graph, $("mapa"), {
       r.zIndex = 0;
     } else {
       r.zIndex = 1;
-      if (estado.selecionado) r.forceLabel = true;
+      // Gênero selecionado, ou seleção pequena (CSV/playlist): todos os rótulos.
+      if (estado.selecionado || (estado.sub && estado.sub.size <= 300)) r.forceLabel = true;
     }
     return r;
   },
@@ -360,7 +372,7 @@ function linkGenero(g) {
 function mostrarPainel(id) {
   const a = graph.getNodeAttributes(id);
   const lista = (porGenero.get(id) ?? [])
-    .filter(([, p]) => p >= estado.pesoMin - 1e-9)
+    .filter(([i, p]) => p >= estado.pesoMin - 1e-9 && naSelecao(i))
     .sort((x, y) => y[1] - x[1] || faixas[x[0]].artista.localeCompare(faixas[y[0]].artista));
 
   $("p-nome").textContent = id;
@@ -386,15 +398,15 @@ function mostrarPainel(id) {
     : "";
 
   $("p-titulo-faixas").textContent =
-    estado.pesoMin > 0
+    (estado.pesoMin > 0
       ? `${fmt(lista.length)} faixas com peso ≥ ${estado.pesoMin.toLocaleString("pt-BR")}`
-      : `${fmt(lista.length)} faixas`;
+      : `${fmt(lista.length)} faixas`) + (estado.sub ? " na seleção" : "");
   $("p-faixas").innerHTML = lista
     .map(([i, p]) => {
       const f = faixas[i];
       return `<li><span class="peso" title="peso ${p.toLocaleString("pt-BR")}"><i style="width:${p * 100}%"></i></span>
-        <span><a href="https://open.spotify.com/track/${f.id}" target="_blank" rel="noopener">${f.faixa ?? "(sem título)"}</a>
-        <span class="art">${f.artista ?? "(sem artista)"} — ${f.album ?? ""}</span></span></li>`;
+        <span><a href="https://open.spotify.com/track/${f.id}" target="_blank" rel="noopener">${esc(f.faixa || "(sem título)")}</a>
+        <span class="art">${esc(f.artista || "(sem artista)")} — ${esc(f.album)}</span></span></li>`;
     })
     .join("");
   $("painel").hidden = false;
@@ -482,6 +494,429 @@ $("legenda").addEventListener("click", (ev) => {
   renderer.refresh({ skipIndexation: true });
 });
 
+// ---------------------------------------------------------------- seleção (origem e CSV)
+
+// Seleção = faixas da origem escolhida ∩ faixas do CSV solto na página.
+function atualizarSelecao() {
+  let sub = null;
+  if (estado.origem >= 0) {
+    sub = new Set();
+    faixas.forEach((f, i) => { if ((f.o ?? [0]).includes(estado.origem)) sub.add(i); });
+  }
+  if (estado.csv) {
+    const doCsv = estado.csv.indices;
+    sub = sub ? new Set([...sub].filter((i) => doCsv.has(i))) : new Set(doCsv);
+  }
+  estado.sub = sub;
+  atualizarFiltros();
+}
+
+$("origem").innerHTML =
+  `<option value="-1">Todas (${fmt(faixas.length)} faixas)</option>` +
+  origens.map((o, i) => `<option value="${i}">${esc(o.nome)} (${fmt(o.faixas)})</option>`).join("");
+$("origem").addEventListener("change", (e) => {
+  estado.origem = parseInt(e.target.value, 10);
+  atualizarSelecao();
+});
+
+// ---------------------------------------------------------------- CSV do Exportify
+
+// CSV com aspas (RFC 4180): campos entre aspas podem ter vírgulas, "" e quebras de linha.
+function lerCsv(texto) {
+  const linhas = [];
+  let campo = "", linha = [], aspas = false;
+  texto = texto.replace(/^﻿/, "");
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (aspas) {
+      if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+      else if (c === '"') aspas = false;
+      else campo += c;
+    } else if (c === '"') aspas = true;
+    else if (c === ",") { linha.push(campo); campo = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      linha.push(campo); campo = "";
+      if (linha.length > 1 || linha[0] !== "") linhas.push(linha);
+      linha = [];
+    } else campo += c;
+  }
+  if (campo !== "" || linha.length) { linha.push(campo); linhas.push(linha); }
+  return linhas;
+}
+
+const paraCsv = (linhas) =>
+  linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n") + "\n";
+
+function baixar(nome, conteudo, tipo) {
+  const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: nome });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const indicePorId = new Map(faixas.map((f, i) => [f.id, i]));
+
+function carregarCsv(nomeArquivo, texto) {
+  const linhas = lerCsv(texto);
+  const cab = linhas[0] ?? [];
+  const col = (...nomes) => cab.findIndex((c) => nomes.includes(c.trim()));
+  const cUri = col("URI da faixa", "Track URI");
+  if (cUri < 0) {
+    alert(`${nomeArquivo}: não parece um CSV do Exportify (falta a coluna "URI da faixa" / "Track URI").`);
+    return;
+  }
+  const cNome = col("Nome da faixa", "Track Name");
+  const cArt = col("Nome(s) do artista", "Artist Name(s)");
+  const indices = new Set(), novas = [], vistas = new Set();
+  let ignoradas = 0, repetidas = 0;
+  for (const l of linhas.slice(1)) {
+    const uri = (l[cUri] ?? "").trim();
+    if (!uri.startsWith("spotify:track:")) { ignoradas++; continue; } // arquivo local, episódio
+    const id = uri.split(":").pop();
+    if (vistas.has(id)) { repetidas++; continue; }
+    vistas.add(id);
+    const i = indicePorId.get(id);
+    if (i === undefined) novas.push({ id, linha: l, faixa: l[cNome], artista: (l[cArt] ?? "").split(/(?<!\\), /)[0].replace(/\\,/g, ",") });
+    else indices.add(i);
+  }
+  const sem = [...indices].filter((i) => !faixas[i].generos.length);
+  estado.csv = {
+    nome: nomeArquivo.replace(/\.csv$/i, ""),
+    cabecalho: cab, total: vistas.size, indices, novas, sem, ignoradas, repetidas,
+  };
+  mostrarCsv();
+  atualizarSelecao();
+  if (estado.selecionado) selecionar(null);
+}
+
+function itemFaixa(f, extra = "") {
+  return `<li><span><a href="https://open.spotify.com/track/${esc(f.id)}" target="_blank" rel="noopener">${esc(f.faixa || "(sem título)")}</a>
+    <span class="art">${esc(f.artista || "(sem artista)")}${f.album ? " — " + esc(f.album) : ""}</span></span>${extra}</li>`;
+}
+
+function mostrarCsv() {
+  const c = estado.csv;
+  $("csv-vazio").hidden = !!c;
+  $("csv-cheio").hidden = !c;
+  if (!c) return;
+  const comGen = c.indices.size - c.sem.length;
+  $("csv-resumo").innerHTML =
+    `<b>${esc(c.nome)}</b>: ${fmt(c.total)} faixas · <b>${fmt(comGen)}</b> no mapa com gênero · ` +
+    `${fmt(c.sem.length)} no mapa sem gênero · <b>${fmt(c.novas.length)}</b> novas (fora do mapa)` +
+    (c.ignoradas ? ` · ${fmt(c.ignoradas)} ignoradas (arquivo local/episódio)` : "") +
+    (c.repetidas ? ` · ${fmt(c.repetidas)} repetidas` : "");
+  $("csv-baixar").disabled = !c.novas.length;
+  $("csv-baixar").textContent = `Baixar pendentes (${fmt(c.novas.length)})`;
+  $("csv-dica").innerHTML = c.novas.length
+    ? `O mapa mostra só as faixas da lista. As novas precisam do pipeline: salve o arquivo baixado em <code>data/raw/avulsos/</code> e rode a ingestão e a coleta de tags.`
+    : "O mapa mostra só as faixas da lista.";
+  $("csv-det-novas").hidden = !c.novas.length;
+  $("csv-t-novas").textContent = `Novas, sem gênero ainda (${fmt(c.novas.length)})`;
+  $("csv-novas").innerHTML = c.novas
+    .map((n) => itemFaixa(n))
+    .join("");
+  $("csv-det-sem").hidden = !c.sem.length;
+  $("csv-t-sem").textContent = `No mapa, mas sem gênero (${fmt(c.sem.length)})`;
+  $("csv-sem").innerHTML = c.sem
+    .map((i) => itemFaixa(faixas[i], ` <a class="acao" data-reclass="${i}">corrigir</a>`))
+    .join("");
+}
+
+$("csv-baixar").addEventListener("click", () => {
+  const c = estado.csv;
+  baixar(`pendentes_${c.nome}.csv`, paraCsv([c.cabecalho, ...c.novas.map((n) => n.linha)]), "text/csv;charset=utf-8");
+});
+$("csv-limpar").addEventListener("click", () => {
+  estado.csv = null;
+  mostrarCsv();
+  atualizarSelecao();
+});
+$("csv-arquivo").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (f) carregarCsv(f.name, await f.text());
+  e.target.value = "";
+});
+$("csv-sem").addEventListener("click", (e) => {
+  const i = e.target.closest("[data-reclass]")?.dataset.reclass;
+  if (i !== undefined) { abrirAba("reclass"); escolherFaixa(parseInt(i, 10)); }
+});
+
+// Arrastar e soltar em qualquer parte da página.
+let arrastando = 0;
+window.addEventListener("dragenter", (e) => {
+  if (![...e.dataTransfer.types].includes("Files")) return;
+  arrastando++;
+  $("soltar").hidden = false;
+});
+window.addEventListener("dragleave", () => { if (--arrastando <= 0) { arrastando = 0; $("soltar").hidden = true; } });
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  arrastando = 0;
+  $("soltar").hidden = true;
+  for (const f of e.dataTransfer.files) {
+    const texto = await f.text();
+    if (/\.json$/i.test(f.name)) importarJson(f.name, texto);
+    else carregarCsv(f.name, texto);
+  }
+});
+
+// ---------------------------------------------------------------- reclassificação
+
+// Correções = base (já aplicadas pelo pipeline) + edições deste navegador, guardadas
+// no localStorage até o JSON ser baixado e salvo em data/manual/.
+const CHAVE_LS = "mapa-generos:reclassificacao";
+const NIVEIS = ["faixa", "album", "artista"];
+const NOME_NIVEL = { faixa: "esta faixa", album: "todo o álbum", artista: "todo o artista" };
+const idCorr = (c) => `${c.nivel}|${c.chave}`;
+const base = new Map((reclassBase.correcoes ?? []).map((c) => [idCorr(c), c]));
+let edicoes = {};
+try { edicoes = JSON.parse(localStorage.getItem(CHAVE_LS) ?? "{}") ?? {}; } catch { edicoes = {}; }
+const gravarEdicoes = () => { try { localStorage.setItem(CHAVE_LS, JSON.stringify(edicoes)); } catch { /* sem armazenamento */ } };
+
+function correcoes() {
+  const m = new Map(base);
+  for (const [k, v] of Object.entries(edicoes)) (v ? m.set(k, v) : m.delete(k));
+  return m;
+}
+
+const chaveDe = (f, nivel) => (nivel === "faixa" ? f.id : nivel === "album" ? f.al : f.artista);
+
+// Correção que vale para a faixa (faixa > álbum > artista), como em reclassificacao.py.
+function correcaoDaFaixa(f, m = correcoes()) {
+  for (const n of NIVEIS) {
+    const k = chaveDe(f, n);
+    const c = k && m.get(`${n}|${k}`);
+    if (c?.generos?.length) return c;
+  }
+  return null;
+}
+
+const rel = { filtro: "pendentes", busca: "", atual: null, escopo: "faixa", chips: [] };
+const semAcento = (t) => (t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const textoBusca = faixas.map((f) => semAcento(`${f.faixa} ${f.artista} ${f.album}`));
+const generosConhecidos = new Set(graph.nodes());
+const contar = (campo, valor) => faixas.reduce((n, f) => n + (f[campo] === valor ? 1 : 0), 0);
+
+function listaGeneros() {
+  const todos = new Set(generosConhecidos);
+  for (const c of correcoes().values()) c.generos.forEach((g) => todos.add(g));
+  $("r-lista-generos").innerHTML = [...todos].sort((a, b) => a.localeCompare(b))
+    .map((g) => `<option value="${esc(g)}">`).join("");
+}
+
+function atualizarContadores() {
+  const m = correcoes();
+  const pend = faixas.filter((f) => !f.generos.length && !correcaoDaFaixa(f, m)).length;
+  const corr = faixas.filter((f) => correcaoDaFaixa(f, m)).length;
+  $("n-pendentes").textContent = pend ? fmt(pend) : "";
+  $("r-n-pendentes").textContent = `(${fmt(pend)})`;
+  $("r-n-corrigidas").textContent = `(${fmt(corr)})`;
+  const n = Object.keys(edicoes).length;
+  $("r-estado").innerHTML = n
+    ? `<b>${fmt(n)} alteraç${n === 1 ? "ão" : "ões"} não exportada${n === 1 ? "" : "s"}</b> (guardadas neste navegador) · ${fmt(m.size)} correções no total`
+    : `${fmt(m.size)} correções, todas já em <code>reclassificacao.json</code>`;
+  $("r-descartar").disabled = !n;
+}
+
+function renderLista() {
+  const m = correcoes();
+  const termo = semAcento(rel.busca.trim());
+  const res = [];
+  faixas.forEach((f, i) => {
+    if (termo && !textoBusca[i].includes(termo)) return;
+    const c = correcaoDaFaixa(f, m);
+    if (rel.filtro === "pendentes" && (f.generos.length || c)) return;
+    if (rel.filtro === "corrigidas" && !c) return;
+    res.push(i);
+  });
+  res.sort((a, b) => (faixas[a].artista || "~").localeCompare(faixas[b].artista || "~") || (faixas[a].album ?? "").localeCompare(faixas[b].album ?? ""));
+  const LIM = 300;
+  $("r-lista").innerHTML = res.slice(0, LIM).map((i) => {
+    const f = faixas[i], c = correcaoDaFaixa(f, m);
+    const marca = c ? `<span class="tag corr" title="correção por ${c.nivel}">${esc(c.generos.join(", "))}</span>`
+      : f.generos.length ? `<span class="tag">${esc(f.generos[0][0])}</span>` : `<span class="tag pend">sem gênero</span>`;
+    return `<li data-i="${i}" class="${i === rel.atual ? "ativa" : ""}"><span>${esc(f.faixa || "(sem título)")}
+      <span class="art">${esc(f.artista || "(sem artista)")} — ${esc(f.album)}</span></span>${marca}</li>`;
+  }).join("");
+  $("r-mais").textContent = res.length > LIM ? `Mostrando ${fmt(LIM)} de ${fmt(res.length)}; refine a busca.`
+    : res.length ? `${fmt(res.length)} faixas` : "Nenhuma faixa.";
+}
+
+function escolherFaixa(i) {
+  rel.atual = i;
+  const f = faixas[i];
+  const c = correcaoDaFaixa(f);
+  rel.escopo = c?.nivel ?? "faixa";
+  rel.chips = c ? [...c.generos] : f.generos.map(([g]) => g);
+  $("r-vazio").hidden = true;
+  $("r-editor").hidden = false;
+  $("r-faixa").innerHTML = `<a href="https://open.spotify.com/track/${esc(f.id)}" target="_blank" rel="noopener">${esc(f.faixa || "(sem título)")}</a>`;
+  const ori = (f.o ?? [0]).map((k) => origens[k]?.nome).filter(Boolean).join(", ");
+  $("r-meta").innerHTML = `${esc(f.artista || "(sem artista)")} — ${esc(f.album)}<br>Origem: ${esc(ori)}` +
+    (f.brasileiro ? " · artista brasileiro" : "");
+  const NOME_N = { faixa: "tags da faixa", album: "tags do álbum", artista: "tags do artista", manual: "correção manual" };
+  $("r-atuais").innerHTML = f.generos.length
+    ? `<p class="nota">Vindos de: ${NOME_N[f.n] ?? f.n}</p>` + f.generos.map(([g, p]) =>
+      `<span class="tag" title="peso ${p.toLocaleString("pt-BR")}">${esc(g)} <small>${p.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</small></span>`).join(" ")
+    : `<p class="nota">Nenhum gênero (sem tags no Last.fm ou só tags que não são gênero).</p>`;
+  renderEditor();
+  renderLista();
+}
+
+function renderEditor() {
+  const f = faixas[rel.atual];
+  const m = correcoes();
+  $("r-escopo").innerHTML = NIVEIS.map((n) => {
+    const k = chaveDe(f, n);
+    if (!k) return "";
+    const qtd = n === "faixa" ? 1 : contar(n === "album" ? "al" : "artista", k);
+    const tem = m.has(`${n}|${k}`) ? " •" : "";
+    return `<button data-escopo="${n}" class="${rel.escopo === n ? "ativa" : ""}" title="${tem ? "já tem correção neste nível" : ""}">
+      Aplicar a ${NOME_NIVEL[n]}${n === "faixa" ? "" : ` (${fmt(qtd)} faixa${qtd === 1 ? "" : "s"})`}${tem}</button>`;
+  }).join("");
+  $("r-chips").innerHTML = rel.chips.map((g, j) =>
+    `<span class="tag ${generosConhecidos.has(g) ? "" : "novo"}" title="${generosConhecidos.has(g) ? "" : "gênero que ainda não está no mapa"}">${esc(g)}<button data-tirar="${j}" aria-label="tirar">×</button></span>`).join("")
+    || `<span class="nota">Nenhum gênero escolhido.</span>`;
+  const atualNivel = m.get(`${rel.escopo}|${chaveDe(f, rel.escopo)}`);
+  const vence = correcaoDaFaixa(f, m);
+  const avisos = [];
+  if (atualNivel) avisos.push(`Já existe correção para ${NOME_NIVEL[rel.escopo]}: ${esc(atualNivel.generos.join(", "))}.`);
+  if (vence && NIVEIS.indexOf(vence.nivel) < NIVEIS.indexOf(rel.escopo))
+    avisos.push(`Esta faixa tem correção mais específica (${vence.nivel}), que continua valendo para ela.`);
+  if (rel.escopo !== "faixa") avisos.push(`Faixas com correção própria (por faixa${rel.escopo === "artista" ? " ou álbum" : ""}) não são afetadas.`);
+  $("r-aviso").innerHTML = avisos.join(" ");
+  $("r-remover").disabled = !atualNivel;
+  $("r-salvar").disabled = !rel.chips.length;
+}
+
+function adicionarChips(texto) {
+  for (const g of texto.split(/[,;]/).map((x) => x.trim().toLowerCase()).filter(Boolean))
+    if (!rel.chips.includes(g)) rel.chips.push(g);
+  renderEditor();
+}
+
+function salvarCorrecao(remover = false) {
+  const f = faixas[rel.atual];
+  const n = rel.escopo, k = chaveDe(f, n);
+  const rotulo = n === "faixa" ? `${f.artista} — ${f.faixa}` : n === "album" ? `${f.artista} — ${f.album}` : f.artista;
+  const id = `${n}|${k}`;
+  const novo = remover ? null : { nivel: n, chave: k, generos: [...rel.chips], rotulo, em: new Date().toISOString().slice(0, 10) };
+  // Se voltou a ser igual ao arquivo, não é mais uma alteração pendente.
+  const igualBase = remover ? !base.has(id) : base.has(id) && JSON.stringify(base.get(id).generos) === JSON.stringify(novo.generos);
+  if (igualBase) delete edicoes[id];
+  else edicoes[id] = novo;
+  gravarEdicoes();
+  listaGeneros();
+  atualizarContadores();
+  escolherFaixa(rel.atual);
+}
+
+// Mesmo formato de reclassificacao.py: uma correção por linha, ordenadas por nível e rótulo.
+function exportarJson() {
+  // Comparação por código de caractere, igual ao sorted() do Python.
+  const cmp = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+  const lista = [...correcoes().values()].sort((a, b) =>
+    NIVEIS.indexOf(a.nivel) - NIVEIS.indexOf(b.nivel) || cmp(a.rotulo ?? "", b.rotulo ?? "") || cmp(a.chave, b.chave));
+  const corpo = lista.map((c) => "  " + JSON.stringify({ nivel: c.nivel, chave: c.chave, generos: c.generos, rotulo: c.rotulo ?? "", em: c.em ?? "" })).join(",\n");
+  return `{"versao": 1, "correcoes": [\n${corpo}\n]}\n`;
+}
+
+function importarJson(nome, texto) {
+  let d;
+  try { d = JSON.parse(texto); } catch { alert(`${nome}: JSON inválido.`); return; }
+  if (!Array.isArray(d.correcoes)) { alert(`${nome}: não é um reclassificacao.json.`); return; }
+  // O arquivo carregado vira o estado desejado: diferenças em relação à base viram edições.
+  const novo = new Map(d.correcoes.filter((c) => NIVEIS.includes(c.nivel) && c.chave).map((c) => [idCorr(c), c]));
+  edicoes = {};
+  for (const [k, c] of novo) if (JSON.stringify(base.get(k)?.generos) !== JSON.stringify(c.generos)) edicoes[k] = c;
+  for (const k of base.keys()) if (!novo.has(k)) edicoes[k] = null;
+  gravarEdicoes();
+  listaGeneros();
+  atualizarContadores();
+  abrirAba("reclass");
+  renderLista();
+}
+
+function abrirAba(qual) {
+  const r = qual === "reclass";
+  $("reclass").hidden = !r;
+  $("aba-reclass").classList.toggle("ativa", r);
+  $("aba-mapa").classList.toggle("ativa", !r);
+  $("controles").classList.toggle("escondido", r);
+  if (r) { selecionar(null); renderLista(); }
+}
+
+$("aba-mapa").addEventListener("click", () => abrirAba("mapa"));
+$("aba-reclass").addEventListener("click", () => abrirAba("reclass"));
+$("r-busca").addEventListener("input", (e) => { rel.busca = e.target.value; renderLista(); });
+$("r-filtros").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  rel.filtro = b.dataset.filtro;
+  document.querySelectorAll("#r-filtros button").forEach((x) => x.classList.toggle("ativa", x === b));
+  renderLista();
+});
+$("r-lista").addEventListener("click", (e) => {
+  const li = e.target.closest("li[data-i]");
+  if (li) escolherFaixa(parseInt(li.dataset.i, 10));
+});
+$("r-escopo").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-escopo]");
+  if (!b) return;
+  rel.escopo = b.dataset.escopo;
+  const c = correcoes().get(`${rel.escopo}|${chaveDe(faixas[rel.atual], rel.escopo)}`);
+  if (c) rel.chips = [...c.generos];
+  renderEditor();
+});
+$("r-chips").addEventListener("click", (e) => {
+  const j = e.target.closest("[data-tirar]")?.dataset.tirar;
+  if (j !== undefined) { rel.chips.splice(parseInt(j, 10), 1); renderEditor(); }
+});
+$("r-novo").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === ",") {
+    e.preventDefault();
+    adicionarChips(e.target.value);
+    e.target.value = "";
+  } else if (e.key === "Backspace" && !e.target.value && rel.chips.length) {
+    rel.chips.pop();
+    renderEditor();
+  }
+});
+// Escolher uma opção do datalist dispara "input" sem tecla: adiciona direto se for gênero conhecido.
+$("r-novo").addEventListener("input", (e) => {
+  if (e.inputType === "insertReplacementText" || (!e.inputType && generosConhecidos.has(e.target.value))) {
+    adicionarChips(e.target.value);
+    e.target.value = "";
+  }
+});
+$("r-salvar").addEventListener("click", () => {
+  if ($("r-novo").value.trim()) { adicionarChips($("r-novo").value); $("r-novo").value = ""; }
+  salvarCorrecao(false);
+});
+$("r-remover").addEventListener("click", () => salvarCorrecao(true));
+$("r-baixar").addEventListener("click", () => baixar("reclassificacao.json", exportarJson(), "application/json"));
+$("r-carregar").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (f) importarJson(f.name, await f.text());
+  e.target.value = "";
+});
+$("r-descartar").addEventListener("click", () => {
+  if (!confirm("Descartar as alterações deste navegador que ainda não foram exportadas?")) return;
+  edicoes = {};
+  gravarEdicoes();
+  atualizarContadores();
+  renderLista();
+  if (rel.atual !== null) escolherFaixa(rel.atual);
+});
+
+listaGeneros();
+atualizarContadores();
+mostrarCsv();
+
 // ---------------------------------------------------------------- início
 
 recolorir();
@@ -499,8 +934,22 @@ function enquadrar() {
 enquadrar();
 
 const comGenero = faixas.filter((f) => f.generos.length).length;
+const curtidas = faixas.filter((f) => f.o?.includes(0) ?? true).length;
 $("resumo").textContent =
-  `${fmt(graph.order)} gêneros · ${fmt(faixas.length)} faixas curtidas (${fmt(comGenero)} com gênero)`;
+  `${fmt(graph.order)} gêneros · ${fmt(faixas.length)} faixas (${fmt(curtidas)} curtidas` +
+  (faixas.length > curtidas ? `, ${fmt(faixas.length - curtidas)} só em playlists` : "") +
+  `) · ${fmt(comGenero)} com gênero`;
+
+// Os controles começam logo abaixo do topo (que cresce com as abas).
+function posicionarControles() {
+  const fim = $("topo").getBoundingClientRect().bottom + 8;
+  $("controles").style.top = `${fim}px`;
+  $("controles").style.maxHeight = `calc(100vh - ${fim + 16}px)`;
+  // No celular a aba Reclassificar fica embaixo do topo, em vez de ao lado.
+  $("reclass").style.top = window.innerWidth <= 760 ? `${fim}px` : "";
+}
+posicionarControles();
+window.addEventListener("resize", posicionarControles);
 
 // Exposto para inspeção no console.
-window.mapa = { graph, renderer, estado, misturar, coresFamilia, porGenero, forceAtlas2 };
+window.mapa = { graph, renderer, estado, misturar, coresFamilia, porGenero, forceAtlas2, faixas, correcoes, carregarCsv, exportarJson, importarJson };
