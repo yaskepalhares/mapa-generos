@@ -82,6 +82,8 @@ SINONIMOS = {
     "west coast rap": "west coast hip hop",
     "southern rap": "southern hip hop",
     "baile funk": "funk carioca",
+    # "hardcore" é ambíguo (punk × eletrônico); nas suas faixas é quase sempre o punk
+    "hardcore": "hardcore punk",
     "tropicalismo": "tropicália",
     "electronic dance music": "edm",
     "rap nacional": "brazilian rap",
