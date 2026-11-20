@@ -76,7 +76,7 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Louvain (semente 42): 23 comunidades, que batem com as famílias (hip hop, rock, pop, r&b/soul, brasileira, emo/punk, metal, eletrônica…); 4 gêneros isolados de uma faixa só (brega funk, macumba, christmas music, pagodão), ligados só pela hierarquia
 - ⬜ Mistura de cor em RGB fica barrenta em alguns casos (trap soul = roxo + amarelo → #C89691); testar mistura em OKLab na Fase 6
 
-## Fase 6 — Visualização HTML 🔄 (primeira versão)
+## Fase 6 — Visualização HTML ✅ (primeira versão aprovada)
 `web/index.html` + `app.js` + `estilo.css`, lendo `grafo.json` e `faixas.json`. Para ver localmente: `python3 -m http.server 8765 --directory web` (ou a configuração `mapa-web` em `.claude/launch.json`) e abrir http://localhost:8765.
 - ✅ sigma.js 3.0.2 + graphology 0.25.4 + @sigma/edge-curve 3.1.0, via jsDelivr (sem build)
 - ✅ ForceAtlas2 calculado no navegador (1.500 iterações, ~1,5 s), posição inicial por família com semente fixa → layout reprodutível. LinLog embolava tudo; `scalingRatio` 30 + gravidade 0,3 separa as famílias
@@ -87,7 +87,7 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ Clique no gênero → painel com família, profundidade, % brasileiro, pais/subgêneros, vizinhos e lista de faixas por peso, com link para o Spotify; clique nos nomes navega pelo grafo
 - ✅ Busca (lista de sugestões), filtro de peso mínimo do gênero na faixa (recalcula o tamanho dos nós), mínimo de faixas por gênero, alternar arestas de coocorrência e de hierarquia, destacar família pela legenda
 - ✅ Conferido: contagem de faixas por gênero recalculada de `faixas.json` = `faixas` do `grafo.json` nos 509 nós; peso ≥ 0,5 deixa 303 gêneros visíveis
-- ⬜ Revisão visual do usuário (cores da mistura, densidade de rótulos, brilho)
+- ✅ Visual aprovado pelo usuário (20/11/2026)
 - ⬜ Opcional: alternar entre visão hierárquica e por proximidade
 - ⬜ Publicar via GitHub Pages (só quando o usuário pedir)
 
