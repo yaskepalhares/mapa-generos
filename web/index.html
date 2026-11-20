@@ -12,7 +12,13 @@
   <div id="mapa"></div>
 
   <header id="topo">
-    <h1>Mapa de gêneros</h1>
+    <div class="titulo">
+      <h1>Mapa de gêneros</h1>
+      <div class="vista" role="group" aria-label="Vista">
+        <button data-vista="2d" class="ativa">2D</button>
+        <button data-vista="3d">3D</button>
+      </div>
+    </div>
     <p id="resumo">carregando…</p>
     <nav id="abas">
       <button id="aba-mapa" class="ativa">Mapa</button>
@@ -121,6 +127,9 @@
       </footer>
     </div>
   </section>
+
+  <!-- Vista 3D (mapa3d.html), carregada só na primeira vez que for escolhida. -->
+  <iframe id="vista3d" title="Mapa de gêneros em 3D" hidden></iframe>
 
   <div id="soltar" hidden><div>Solte o CSV do Exportify (ou um reclassificacao.json)</div></div>
 

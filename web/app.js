@@ -951,5 +951,23 @@ function posicionarControles() {
 posicionarControles();
 window.addEventListener("resize", posicionarControles);
 
+// ---------------------------------------------------------------- vista 2D/3D
+// A vista 3D é a página mapa3d.html num iframe por cima de tudo, criada na
+// primeira vez que for escolhida. A página sempre abre em 2D.
+
+function mostrarVista(vista) {
+  const quadro = $("vista3d");
+  const tresD = vista === "3d";
+  if (tresD && !quadro.src) quadro.src = "mapa3d.html?embutido=1";
+  quadro.hidden = !tresD;
+  // Em 2D, a animação do 3D fica pausada para não gastar GPU escondida.
+  const m3d = quadro.contentWindow?.mapa3d?.mapa;
+  if (m3d) tresD ? m3d.resumeAnimation() : m3d.pauseAnimation();
+  for (const b of document.querySelectorAll(".vista button")) b.classList.toggle("ativa", b.dataset.vista === vista);
+  if (tresD) quadro.focus();
+}
+for (const b of document.querySelectorAll(".vista button")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
+window.mostrarVista = mostrarVista; // chamado pelo seletor dentro do iframe
+
 // Exposto para inspeção no console.
 window.mapa = { graph, renderer, estado, misturar, coresFamilia, porGenero, forceAtlas2, faixas, correcoes, carregarCsv, exportarJson, importarJson };

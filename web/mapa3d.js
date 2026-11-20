@@ -278,7 +278,8 @@ mapa.cameraPosition({ x: 0, y: 0, z: DIST_INICIAL }, { x: 0, y: 0, z: 0 });
 function selecionar(id) {
   estado.selecionado = id;
   mapa.linkColor(corAresta);
-  for (const n of nos) n.mat.opacity = !id || n.id === id ? n.alfa : n.alfa * 0.15;
+  // Selecionado em cheio, vizinhos um pouco apagados, o resto quase some.
+  for (const n of nos) n.mat.opacity = !id || n.id === id ? n.alfa : n.alfa * 0.07;
   if (!id) {
     $("painel").hidden = true;
     for (const n of nos) {
@@ -294,7 +295,7 @@ function selecionar(id) {
     if (l.target.id === id) viz.add(l.source.id);
   }
   for (const m of nos) {
-    if (viz.has(m.id)) m.mat.opacity = m.alfa;
+    if (viz.has(m.id) && m.id !== id) m.mat.opacity = m.alfa * 0.8;
     m.elRotulo?.classList.toggle("apagado", !viz.has(m.id));
   }
 
@@ -360,6 +361,17 @@ $("painel").addEventListener("click", (ev) => {
 });
 
 // ---------------------------------------------------------------- controles
+
+// Seletor 2D/3D: dentro da página principal (iframe) avisa a página-mãe;
+// aberta sozinha, vai para index.html.
+const embutido = new URLSearchParams(location.search).has("embutido");
+document.querySelector('.vista [data-vista="2d"]').addEventListener("click", () => {
+  if (embutido && parent !== window && parent.mostrarVista) parent.mostrarVista("2d");
+  else location.href = "index.html";
+});
+// Arquivo solto aqui não deve substituir a página (o CSV é tratado na vista 2D).
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", (e) => e.preventDefault());
 
 function mostrarArestas(tipo) {
   estado.arestas = tipo;
