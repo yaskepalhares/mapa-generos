@@ -1,16 +1,24 @@
 """Marca com a tag "brazilian" todas as faixas cujo artista principal é brasileiro.
 
-Sinais, por artista principal (o 1º artista da faixa no Spotify):
-1. MusicBrainz: país do artista (busca por nome; homônimos são desempatados pelo link
-   do Spotify; se continuar ambíguo, o MusicBrainz não decide).
-2. Last.fm: tag de país no nível do artista ("brazilian", "brazil", "brasil"…).
-   Mesmo com peso baixo ela é confiável (Don L, BK, Froid têm peso 1–4).
-3. Reclassificação manual: gêneros corrigidos pelo usuário que indicam Brasil
-   ("brazilian rap", "funk brasileiro", "forró"…).
-
-Regra: brasileiro se o MusicBrainz diz BR, ou se o Last.fm/planilha dizem Brasil e o
-MusicBrainz não aponta outro país. Conflitos e casos sem nenhum sinal, mas com títulos
-que parecem português, ficam marcados para revisão.
+Ordem, por artista principal (o 1º artista da faixa no Spotify):
+1. Wikidata: país pelo ID de artista do Spotify (ver wikidata.py). Rápido (consulta em
+   lote) e sem homônimos. Se tiver país, decide sozinho.
+1b. Wikipédia em português, pelo nome: página com o título exato do artista, ligada a um
+   item de músico/banda no Wikidata. Pode errar em homônimos; se discordar da tag de país
+   do Last.fm, vai para revisão. (Teste: 57 de 58 iguais à revisão antiga.)
+2. Método antigo, só para quem nenhum dos dois resolve:
+   a. MusicBrainz: país do artista (busca por nome; homônimos desempatados pelo link
+      do Spotify; se continuar ambíguo, o MusicBrainz não decide).
+   b. Last.fm: tag de país no nível do artista ("brazilian", "brazil", "brasil"…).
+      Mesmo com peso baixo ela é confiável (Don L, BK, Froid têm peso 1–4).
+   c. Reclassificação manual: gêneros corrigidos pelo usuário que indicam Brasil
+      ("brazilian rap", "funk brasileiro", "forró"…).
+   Brasileiro se o MusicBrainz diz BR, ou se o Last.fm/correções dizem Brasil e o
+   MusicBrainz não aponta outro país.
+3. Nenhuma fonte com informação: "Brasileiro?" = "?" — o usuário decide (sim/não) na
+   planilha. Até lá a faixa fica sem a tag brazilian.
+Conflitos (Wikidata com BR e outro país; Last.fm/correções × MusicBrainz) ficam marcados
+para revisão.
 
 A decisão fica em data/manual/artistas_brasileiros.xlsx (versionada). A coluna
 "Brasileiro?" pode ser corrigida à mão no Excel; correções são mantidas nas próximas
@@ -22,7 +30,7 @@ tags_faixas.parquet e à classificação manual.
 
 Uso:
     python -m mapa_generos.marcar_brasileiros             # consulta o MusicBrainz (lento)
-    python -m mapa_generos.marcar_brasileiros --so-cache  # só o que já está em cache
+    python -m mapa_generos.marcar_brasileiros --so-cache  # só o que já está em cache (Wikidata e MusicBrainz)
 """
 
 from __future__ import annotations
@@ -38,7 +46,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from tqdm import tqdm
 
-from . import musicbrainz
+from . import musicbrainz, wikidata
 from . import reclassificacao
 from .manual import FONTE, FONTE_TITULO, FUNDO_PREENCHER, FUNDO_TITULO, FUNDO_TITULO_PREENCHER
 
@@ -63,6 +71,8 @@ COLUNAS = [  # (campo, título, largura)
     ("auto", "Decisão do script", 16),
     ("revisar", "Revisar", 34),
     ("faixas", "Nº de faixas", 12),
+    ("pais_wd", "País no Wikidata", 18),
+    ("pais_ptwiki", "País na Wikipédia pt (pelo nome)", 20),
     ("pais_mb", "País no MusicBrainz", 22),
     ("tag_lastfm", "Tag de país no Last.fm", 22),
     ("manual", "Gênero BR na planilha manual", 26),
@@ -80,10 +90,20 @@ def sinais_por_artista(faixas: pd.DataFrame) -> pd.DataFrame:
                 exemplo=("faixa", "first"), titulos=("faixa", lambda s: " | ".join(s.dropna())))
            .reset_index())
 
-    # 1) MusicBrainz (com cache; a 1ª execução leva 30–50 min). Falhas não interrompem:
-    #    o artista fica como "erro" e é consultado de novo na próxima execução.
+    # 1) Wikidata, em lote, pelo ID do Spotify
+    wd = wikidata.paises(art.spotify_id.dropna().tolist())
+    art["pais_wd"] = art.spotify_id.map(lambda s: ", ".join(wd.get(s, [])) if isinstance(s, str) else "")
+    # 1b) Wikipédia em português, pelo nome, para quem ficou sem país
+    pt = wikidata.paises_por_nome_ptwiki(art.artista[art.pais_wd.eq("")].tolist())
+    art["pais_ptwiki"] = art.artista.map(lambda n: ", ".join(pt.get(n, []))).where(art.pais_wd.eq(""), "")
+
+    # 2a) MusicBrainz só para quem o Wikidata não resolveu (com cache; ~2–5 s por artista
+    #     novo). Falhas não interrompem: o artista fica como "erro" e volta na próxima execução.
     mb = []
-    for row in tqdm(art.itertuples(index=False), total=len(art), unit="artista", desc="MusicBrainz"):
+    for row in tqdm(art.itertuples(index=False), total=len(art), unit="artista", desc="MusicBrainz (reserva)"):
+        if row.pais_wd or row.pais_ptwiki:
+            mb.append({"pais": None, "como": "não consultado (Wikidata/Wikipédia resolveu)"})
+            continue
         try:
             mb.append(musicbrainz.pais_do_artista(row.artista, row.spotify_id))
         except musicbrainz.ErroMusicBrainz:
@@ -92,7 +112,7 @@ def sinais_por_artista(faixas: pd.DataFrame) -> pd.DataFrame:
     art["como_mb"] = [r["como"] for r in mb]
     art.attrs["erros_mb"] = sum(r["como"] == "erro" for r in mb)
 
-    # 2) Last.fm: maior peso de uma tag de país BR no nível do artista
+    # 2b) Last.fm: maior peso de uma tag de país BR no nível do artista
     t = pd.read_parquet(TAGS)
     t = t[t.nivel == "artista"].merge(faixas[["track_id", "artista"]], on="track_id")
     t = t[t.tag.str.lower().str.fullmatch(TAG_PAIS_LASTFM.pattern)]
@@ -100,7 +120,7 @@ def sinais_por_artista(faixas: pd.DataFrame) -> pd.DataFrame:
         lambda g: g.loc[g.contagem.idxmax(), "tag"] + f" ({g.contagem.max()})", include_groups=False)
     art["tag_lastfm"] = art.artista.map(lf).fillna("")
 
-    # 3) Reclassificação manual (reclassificacao.json), gêneros por faixa juntados com ";"
+    # 2c) Reclassificação manual (reclassificacao.json), gêneros por faixa juntados com ";"
     ap = reclassificacao.aplicar(faixas)
     m = (ap.groupby("track_id").genero_digitado.agg("; ".join).rename("generos").reset_index()
          .merge(faixas[["track_id", "artista"]], on="track_id"))
@@ -110,17 +130,32 @@ def sinais_por_artista(faixas: pd.DataFrame) -> pd.DataFrame:
 
 
 def decidir(art: pd.DataFrame) -> pd.DataFrame:
+    # Wikidata pelo ID tem prioridade; senão, a Wikipédia pelo nome
+    pais_wiki = art.pais_wd.where(art.pais_wd.ne(""), art.pais_ptwiki)
+    tem_wd = pais_wiki.ne("")
+    br_wd = pais_wiki.str.split(", ").map(lambda p: "BR" in p)
     br_mb = art.pais_mb.eq("BR")
     outro_mb = art.pais_mb.ne("") & ~br_mb
     br_outros = art.tag_lastfm.ne("") | art.manual.ne("")
-    art["brasileiro"] = (br_mb | (br_outros & ~outro_mb)).map({True: "sim", False: "não"})
-    art["auto"] = art.brasileiro
+    antigo = br_mb | (br_outros & ~outro_mb)
+    sem_sinal = ~tem_wd & ~br_mb & ~br_outros & art.pais_mb.eq("")
+    dec = pd.Series("não", index=art.index)
+    dec[tem_wd & br_wd] = "sim"
+    dec[~tem_wd & antigo] = "sim"
+    dec[sem_sinal] = "?"
+    art["brasileiro"] = dec
+    art["auto"] = dec
 
     rev = pd.Series("", index=art.index)
-    rev[br_outros & outro_mb] = "conflito: Last.fm/planilha dizem Brasil, MusicBrainz diz " + art.pais_mb
-    sem_sinal = ~br_mb & ~br_outros & art.pais_mb.eq("")
+    rev[tem_wd & br_wd & pais_wiki.str.contains(",")] = "Wikidata com mais de um país: " + pais_wiki
+    por_nome = art.pais_wd.eq("") & art.pais_ptwiki.ne("")
+    rev[por_nome & (br_wd != art.tag_lastfm.ne(""))] = (
+        "Wikipédia (pelo nome) diz " + art.pais_ptwiki + ", tag do Last.fm "
+        + art.tag_lastfm.where(art.tag_lastfm.ne(""), "não diz Brasil") + ": confira (homônimo?)")
+    rev[~tem_wd & br_outros & outro_mb] = "conflito: Last.fm/correções dizem Brasil, MusicBrainz diz " + art.pais_mb
     pt = art.titulos.str.contains(PORTUGUES)
-    rev[sem_sinal & pt] = "sem dados de país; títulos parecem português"
+    rev[sem_sinal] = "sem país em nenhuma fonte: responda sim ou não"
+    rev[sem_sinal & pt] = "sem país em nenhuma fonte (títulos parecem português): responda sim ou não"
     rev[art.como_mb.eq("erro") & rev.eq("")] = "MusicBrainz falhou: rode de novo"
     art["revisar"] = rev
     return art
@@ -147,7 +182,7 @@ def mesclar_correcoes(art: pd.DataFrame) -> pd.DataFrame:
         valor = str(antes["brasileiro"]).strip().lower()
         valor = {"s": "sim", "n": "não", "nao": "não", "yes": "sim", "no": "não"}.get(valor, valor)
         auto_antes = str(antes.get("auto", "")).strip().lower()
-        mudou_a_mao = auto_antes in ("sim", "não") and valor != auto_antes
+        mudou_a_mao = auto_antes in ("sim", "não", "?") and valor != auto_antes
         if valor in ("sim", "não") and (antes.get("corrigido") == "sim" or mudou_a_mao):
             art.at[i, "brasileiro"], art.at[i, "corrigido"] = valor, "sim"
             art.at[i, "revisar"] = ""  # já resolvido pelo usuário
@@ -176,7 +211,7 @@ def escrever_revisao(art: pd.DataFrame) -> None:
     for i, (_, _, w) in enumerate(COLUNAS, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     letra = get_column_letter(col_br)
-    dv = DataValidation(type="list", formula1='"sim,não"', allow_blank=False)
+    dv = DataValidation(type="list", formula1='"sim,não,?"', allow_blank=False)
     dv.add(f"{letra}2:{letra}{ws.max_row}")
     ws.add_data_validation(dv)
     ws.freeze_panes = "B2"
@@ -187,6 +222,7 @@ def escrever_revisao(art: pd.DataFrame) -> None:
         ("Como revisar", True),
         ("Primeiro vêm os artistas marcados em \"Revisar\" (conflitos e casos sem dados de país), depois os brasileiros, depois os demais.", False),
         ("Para corrigir, mude a coluna amarela \"Brasileiro?\" para sim ou não. O resto é gerado pelo script.", False),
+        ("\"?\" = nenhuma fonte (Wikidata, MusicBrainz, Last.fm, correções) tem o país: responda sim ou não. Até lá, fica sem a tag brazilian.", False),
         ("Rodar de novo (python -m mapa_generos.marcar_brasileiros) mantém suas correções (\"Corrigido à mão\" = sim).", False),
         ("Vale o artista principal (o 1º artista da faixa no Spotify). Participações (feat.) não contam.", False),
     ]:
@@ -202,7 +238,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--so-cache", action="store_true",
                     help="não consulta o MusicBrainz; usa só respostas já em cache")
     args = ap.parse_args(argv)
-    musicbrainz.SO_CACHE = args.so_cache
+    musicbrainz.SO_CACHE = wikidata.SO_CACHE = args.so_cache
     faixas = pd.read_parquet(FAIXAS)
     art = mesclar_correcoes(decidir(sinais_por_artista(faixas)))
     escrever_revisao(art)
@@ -216,6 +252,8 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Faixas com a tag brazilian: {len(sel)} de {len(faixas)} ({100 * len(sel) / len(faixas):.1f}%)")
     origem = art[art.brasileiro == "sim"]
     print("Por fonte (um artista pode ter mais de uma):")
+    print(f"  Wikidata com BR:       {int(origem.pais_wd.str.contains('BR').sum())}")
+    print(f"  Wikipédia pt com BR:   {int(origem.pais_ptwiki.str.contains('BR').sum())}")
     print(f"  MusicBrainz = BR:      {int(origem.pais_mb.eq('BR').sum())}")
     print(f"  tag de país Last.fm:   {int(origem.tag_lastfm.ne('').sum())}")
     print(f"  planilha manual:       {int(origem.manual.ne('').sum())}")
@@ -223,6 +261,14 @@ def main(argv: list[str] | None = None) -> None:
     n_erro = int(art.como_mb.eq("erro").sum())
     if n_erro:
         print(f"ATENÇÃO: {n_erro} artistas sem resposta do MusicBrainz; rode de novo para completar.")
+    resto = art.pais_wd.eq("") & art.pais_ptwiki.eq("")
+    print(f"Wikidata (ID) resolveu {int(art.pais_wd.ne('').sum())} de {len(art)} artistas; "
+          f"Wikipédia pt (nome) mais {int(art.pais_ptwiki.ne('').sum())}; "
+          f"MusicBrainz consultado para {int(resto.sum())}")
+    perguntar = art[art.brasileiro == "?"].sort_values("faixas", ascending=False)
+    if len(perguntar):
+        print(f"\nSem país em nenhuma fonte ({len(perguntar)}) — responda sim/não na planilha:")
+        print(perguntar[["artista", "faixas", "exemplo"]].to_string(index=False))
     n_rev = int(art.revisar.ne("").sum())
     print(f"Para revisar: {n_rev} artistas → {REVISAO.relative_to(ROOT)}")
     print(f"Salvo em {SAIDA.relative_to(ROOT)}")
