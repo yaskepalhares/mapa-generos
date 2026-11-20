@@ -25,9 +25,9 @@ Meta: tabela `faixas` com as curtidas (título, artista(s), álbum, data em que 
 - ✅ Export real (20/11/2026, filtro `owner:me` no Exportify): 83 playlists, todas incluídas com `--todas` (3 colaborativas ficariam de fora pela regra dos 50%). Nomes de arquivo do zip vinham sem a marca UTF-8 e foram corrigidos na extração
 - ✅ Resultado: **5.990 faixas** (4.018 curtidas + 1.972 só em playlists; 100 delas têm o mesmo ISRC de uma curtida com outro ID), 1.684 artistas principais, 3.636 álbuns
 - ✅ Coleta das 1.972 novas (~45 min, 0 erros): faixa 360 · álbum 812 · artista 765 · sem tag 35. Total: faixa 1.386 · álbum 2.896 · artista 1.610 · sem tag 98
-- ✅ Brasileiros com nova ordem de fontes (Fase 2b): **396 de 1.684 artistas (23,5%), 1.358 de 5.990 faixas (22,7%)**; 151 artistas sem país em nenhuma fonte aguardam o usuário ("?" na planilha)
+- ✅ Brasileiros com nova ordem de fontes (Fase 2b): **396 de 1.684 artistas (23,5%), 1.358 de 5.990 faixas (22,7%)**; 151 artistas sem país em nenhuma fonte foram decididos pelo usuário (15 sim, 136 não) → **411 artistas (24,4%), 1.378 faixas (23,0%)**
 - ✅ Gêneros: faixa 22,9% · álbum 41,9% · artista 32,6% · manual 1,1% · sem gênero 93 (1,6%); 31.898 linhas, 586 gêneros. Hierarquia: 13,0% sem pai, 0 ciclos. Grafo: 586 nós, 2.190 arestas (1.655 coocorrência + 535 hierarquia), 25 comunidades
-- ⬜ 93 faixas sem gênero → aba Reclassificar; 151 artistas "?" → `artistas_brasileiros.xlsx`
+- ⬜ 93 faixas sem gênero → aba Reclassificar
 
 ## Fase 2 — Tags por faixa (Last.fm) ✅
 Meta: cada faixa com uma lista de tags ponderadas.
