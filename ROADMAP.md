@@ -37,7 +37,7 @@ Meta: cada faixa com uma lista de tags ponderadas.
 - ✅ `marcar_brasileiros.py`: artista principal brasileiro → tag `brazilian` em todas as faixas dele (`data/processed/tags_pais.parquet`)
 - ✅ Sinais: país no MusicBrainz (homônimos desempatados pelo link do Spotify), tag de país no Last.fm, gêneros BR na planilha manual. Gênero sozinho (bossa nova) não conta: pegaria Laufey e Stan Getz
 - ✅ MusicBrainz completo para os 1.030 artistas (19/11/2026; ~1h25 por causa de respostas 503)
-- ✅ Resultado: **224 de 1.030 artistas (21,7%), 780 de 4.018 faixas (19,4%)**, incluindo 7 marcados à mão (Linguini, DJ Wallace, MC Vitin LC, Prod.Nifour, Gustavo Vaz, Artwo, ogoin)
+- ✅ Resultado: **225 de 1.030 artistas (21,8%), 781 de 4.018 faixas (19,4%)**, incluindo 8 marcados à mão (Linguini, DJ Wallace, MC Vitin LC, Prod.Nifour, Gustavo Vaz, Artwo, ogoin, Supercombo — homônimo estoniano no MusicBrainz). BIA e Alissic ficam como não brasileiros
 - ✅ Correções manuais: só contam quando diferem da coluna "Decisão do script" gravada na planilha (antes, decisões antigas do próprio script viravam "correção")
 - ⬜ Revisão do usuário: 3 conflitos (Supercombo: MusicBrainz diz EE, provável homônimo; Alissic: GB; BIA: US)
 
